@@ -19,7 +19,7 @@ import { useDashboardStocks, useDashboardAlerts, useLocalWatchlist } from '@/hoo
 import { statusPill } from '@/lib/scoring';
 import { ScoreCard } from './score-card';
 import { PeerComparison } from './peer-comparison';
-import { historicalData, PERIODS, periodDescriptions, type Period } from '@/lib/history-data';
+import { historicalData, stockEvents, eventTypeConfig, PERIODS, periodDescriptions, type Period } from '@/lib/history-data';
 import type { Stock } from '@workspace/api-client-react';
 
 export function DistressIQDashboard() {
@@ -410,6 +410,17 @@ export function DistressIQDashboard() {
                               strokeDasharray="4 4"
                               label={{ position: 'insideTopLeft', value: '$1 Compliance line', fill: '#ef4444', fontSize: 11, fontWeight: 600, dy: -10 }}
                             />
+                            {/* Alert event markers — vertical lines at event dates */}
+                            {(stockEvents[selected.ticker]?.[chartPeriod] ?? []).map((ev, i) => (
+                              <ReferenceLine
+                                key={i}
+                                x={ev.d}
+                                stroke={eventTypeConfig[ev.type].stroke}
+                                strokeDasharray="3 3"
+                                strokeOpacity={0.7}
+                                strokeWidth={1.5}
+                              />
+                            ))}
                             <Area
                               type="monotone"
                               dataKey="p"
@@ -421,6 +432,30 @@ export function DistressIQDashboard() {
                           </AreaChart>
                         </ResponsiveContainer>
                       </div>
+
+                      {/* Event timeline for this period */}
+                      {(stockEvents[selected.ticker]?.[chartPeriod] ?? []).length > 0 && (
+                        <div className="mt-4 space-y-2">
+                          <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Events this period</p>
+                          <div className="space-y-1.5">
+                            {(stockEvents[selected.ticker]?.[chartPeriod] ?? []).map((ev, i) => {
+                              const cfg = eventTypeConfig[ev.type];
+                              return (
+                                <div key={i} className={`flex items-start gap-3 rounded-xl border px-4 py-2.5 ${cfg.bg} ${cfg.border}`}>
+                                  <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: cfg.color }} />
+                                  <div className="flex-1 min-w-0">
+                                    <span className="text-xs font-bold text-slate-500 mr-2">{ev.d}</span>
+                                    <span className={`text-xs font-semibold ${cfg.text}`}>{ev.message}</span>
+                                  </div>
+                                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${cfg.bg} ${cfg.text} border ${cfg.border}`}>
+                                    {cfg.label}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 
