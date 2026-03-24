@@ -18,6 +18,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useDashboardStocks, useDashboardAlerts, useLocalWatchlist } from '@/hooks/use-distressiq';
 import { statusPill } from '@/lib/scoring';
 import { ScoreCard } from './score-card';
+import { PeerComparison } from './peer-comparison';
+import { historicalData, PERIODS, periodDescriptions, type Period } from '@/lib/history-data';
 import type { Stock } from '@workspace/api-client-react';
 
 export function DistressIQDashboard() {
@@ -26,6 +28,7 @@ export function DistressIQDashboard() {
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [strategyMode, setStrategyMode] = useState('balanced');
   const [activeTab, setActiveTab] = useState('scanner');
+  const [chartPeriod, setChartPeriod] = useState<Period>('3M');
 
   const { data: stocks = [] } = useDashboardStocks({ q: query, status: statusFilter });
   const { data: alerts = [] } = useDashboardAlerts();
@@ -348,9 +351,33 @@ export function DistressIQDashboard() {
                         </div>
                       </div>
 
-                      <div className="mt-8 h-[360px] rounded-2xl bg-white border border-slate-100 shadow-inner shadow-slate-100/50 p-4">
+                      {/* Period selector */}
+                      <div className="mt-6 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1">
+                          {PERIODS.map((p) => (
+                            <button
+                              key={p.value}
+                              onClick={() => setChartPeriod(p.value)}
+                              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                                chartPeriod === p.value
+                                  ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200'
+                                  : 'text-slate-500 hover:text-slate-800'
+                              }`}
+                            >
+                              {p.label}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-xs text-slate-400 hidden sm:block">{periodDescriptions[chartPeriod]}</p>
+                      </div>
+
+                      {/* Chart */}
+                      <div className="mt-4 h-[320px] rounded-2xl bg-white border border-slate-100 shadow-inner shadow-slate-100/50 p-4">
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={selected.chart} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <AreaChart
+                            data={historicalData[selected.ticker]?.[chartPeriod] ?? selected.chart}
+                            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                          >
                             <defs>
                               <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#475569" stopOpacity={0.15} />
@@ -358,26 +385,39 @@ export function DistressIQDashboard() {
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                            <XAxis 
-                              dataKey="d" 
-                              axisLine={false} 
-                              tickLine={false} 
-                              tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} 
-                              dy={10}
-                            />
-                            <YAxis 
-                              domain={[0, 'dataMax + 0.2']} 
-                              axisLine={false} 
+                            <XAxis
+                              dataKey="d"
+                              axisLine={false}
                               tickLine={false}
-                              tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
+                              tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
+                              dy={10}
+                              interval={chartPeriod === '1W' ? 0 : chartPeriod === '1M' ? 3 : chartPeriod === '3M' ? 1 : chartPeriod === '6M' ? 3 : 0}
+                            />
+                            <YAxis
+                              domain={['dataMin - 0.1', 'dataMax + 0.2']}
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
                               tickFormatter={(val) => `$${val.toFixed(2)}`}
                             />
-                            <RechartsTooltip 
-                              contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                            <RechartsTooltip
+                              contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
                               formatter={(value: number) => [`$${value.toFixed(2)}`, 'Price']}
                             />
-                            <ReferenceLine y={1} stroke="#ef4444" strokeDasharray="4 4" label={{ position: 'insideTopLeft', value: 'Compliance line', fill: '#ef4444', fontSize: 12, fontWeight: 600, dy: -10 }} />
-                            <Area type="monotone" dataKey="p" stroke="#334155" fill="url(#priceFill)" strokeWidth={3} activeDot={{ r: 6, strokeWidth: 0, fill: '#0f172a' }} />
+                            <ReferenceLine
+                              y={1}
+                              stroke="#ef4444"
+                              strokeDasharray="4 4"
+                              label={{ position: 'insideTopLeft', value: '$1 Compliance line', fill: '#ef4444', fontSize: 11, fontWeight: 600, dy: -10 }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="p"
+                              stroke="#334155"
+                              fill="url(#priceFill)"
+                              strokeWidth={2.5}
+                              activeDot={{ r: 5, strokeWidth: 0, fill: '#0f172a' }}
+                            />
                           </AreaChart>
                         </ResponsiveContainer>
                       </div>
@@ -413,6 +453,13 @@ export function DistressIQDashboard() {
                     <ScoreCard title="Pattern Score" value={selected.patternScore} icon={TrendingDown} note="Flags dilution loops, reverse split tendencies, and pop-and-fade behavior." />
                     <ScoreCard title="Tradability" value={selected.tradabilityScore} icon={Building2} note="Measures range quality, liquidity, spread, and movement structure." />
                   </div>
+
+                  {/* Peer comparison */}
+                  <PeerComparison
+                    selected={selected}
+                    allStocks={stocks}
+                    onSelect={(stock) => setSelectedTicker(stock.ticker)}
+                  />
                 </div>
 
                 {/* Right side: Trade Plan & Notes */}
