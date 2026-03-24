@@ -1,0 +1,586 @@
+import React, { useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import { 
+  Search, Bell, TrendingUp, TrendingDown, AlertTriangle, 
+  Filter, BarChart3, Activity, DollarSign, ShieldAlert, 
+  Building2, Users, Briefcase 
+} from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+import { useDashboardStocks, useDashboardAlerts, useLocalWatchlist } from '@/hooks/use-distressiq';
+import { statusPill } from '@/lib/scoring';
+import { ScoreCard } from './score-card';
+import type { Stock } from '@workspace/api-client-react';
+
+export function DistressIQDashboard() {
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+  const [strategyMode, setStrategyMode] = useState('balanced');
+  const [activeTab, setActiveTab] = useState('scanner');
+
+  const { data: stocks = [] } = useDashboardStocks({ q: query, status: statusFilter });
+  const { data: alerts = [] } = useDashboardAlerts();
+  const { watchlist, toggleWatchlist } = useLocalWatchlist();
+
+  // Safely get selected stock or fallback to first
+  const selected = useMemo(() => {
+    return stocks.find(s => s.ticker === selectedTicker) || stocks[0];
+  }, [stocks, selectedTicker]);
+
+  const topSetups = stocks.slice(0, 3);
+
+  const adjustedTradePlan = useMemo(() => {
+    if (!selected) return null;
+    const plans = {
+      conservative: {
+        label: 'Conservative',
+        entry: selected.entryZone,
+        target: selected.targetZone,
+        stop: selected.stopZone,
+        sizing: 'Risk 1–2% of account'
+      },
+      balanced: {
+        label: 'Balanced',
+        entry: selected.entryZone,
+        target: selected.targetZone,
+        stop: selected.stopZone,
+        sizing: 'Risk 2–4% of account'
+      },
+      aggressive: {
+        label: 'Aggressive',
+        entry: selected.entryZone,
+        target: selected.targetZone,
+        stop: selected.stopZone,
+        sizing: 'Risk 4–6% of account'
+      }
+    };
+    return plans[strategyMode as keyof typeof plans];
+  }, [selected, strategyMode]);
+
+  const handleRowClick = (stock: Stock) => {
+    setSelectedTicker(stock.ticker);
+    setActiveTab('detail');
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50/50 text-slate-900 pb-12">
+      <div className="mx-auto max-w-7xl p-4 md:p-8">
+        {/* Header Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="mb-8"
+        >
+          <div className="flex flex-col gap-5 rounded-[2rem] bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-200/60 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200/50">
+                <Activity className="h-3.5 w-3.5" />
+                DistressIQ MVP
+              </div>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl font-display">
+                Pre-delisting opportunity intelligence
+              </h1>
+              <p className="mt-2.5 max-w-3xl text-sm leading-relaxed text-slate-500 md:text-base">
+                Rank sub-$2 distressed stocks by bounce probability, delisting risk, operator quality, business strength, and tradability.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button className="rounded-xl px-6 bg-slate-900 hover:bg-slate-800 text-white shadow-md shadow-slate-900/10 transition-all active:scale-95">
+                Start Free Trial
+              </Button>
+              <Button variant="outline" className="rounded-xl px-6 border-slate-200 text-slate-700 hover:bg-slate-50 transition-all active:scale-95">
+                View Alerts
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Stats Row */}
+        <div className="mb-8 grid gap-4 md:grid-cols-4">
+          <Card className="rounded-[1.5rem] shadow-sm border-slate-200/60 hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">Active setups</p>
+                  <p className="mt-1.5 text-3xl font-bold text-slate-900">18</p>
+                </div>
+                <div className="rounded-2xl bg-blue-50 p-3 ring-1 ring-blue-100"><BarChart3 className="h-5 w-5 text-blue-600" /></div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="rounded-[1.5rem] shadow-sm border-slate-200/60 hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">High-quality today</p>
+                  <p className="mt-1.5 text-3xl font-bold text-slate-900">7</p>
+                </div>
+                <div className="rounded-2xl bg-emerald-50 p-3 ring-1 ring-emerald-100"><TrendingUp className="h-5 w-5 text-emerald-600" /></div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="rounded-[1.5rem] shadow-sm border-slate-200/60 hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">High risk names</p>
+                  <p className="mt-1.5 text-3xl font-bold text-slate-900">11</p>
+                </div>
+                <div className="rounded-2xl bg-rose-50 p-3 ring-1 ring-rose-100"><ShieldAlert className="h-5 w-5 text-rose-600" /></div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="rounded-[1.5rem] shadow-sm border-slate-200/60 hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">Triggered alerts</p>
+                  <p className="mt-1.5 text-3xl font-bold text-slate-900">24</p>
+                </div>
+                <div className="rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-100"><Bell className="h-5 w-5 text-amber-600" /></div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Interface Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-white p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-200/60 md:w-[520px] h-auto">
+            <TabsTrigger value="scanner" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Scanner</TabsTrigger>
+            <TabsTrigger value="detail" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Stock Detail</TabsTrigger>
+            <TabsTrigger value="pricing" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Pricing</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="scanner" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
+            <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+              {/* Left Panel: Scanner Table */}
+              <Card className="rounded-[2rem] shadow-sm border-slate-200/60 flex flex-col">
+                <CardHeader className="pb-4 pt-6 px-6">
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                    <div>
+                      <CardTitle className="text-xl font-display font-bold">Opportunity scanner</CardTitle>
+                      <p className="mt-1.5 text-sm text-slate-500">Filter for orderly sub-$2 names with compliance pressure.</p>
+                    </div>
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <Input 
+                          value={query} 
+                          onChange={(e) => setQuery(e.target.value)} 
+                          placeholder="Search ticker or company" 
+                          className="rounded-xl pl-10 bg-slate-50/50 border-slate-200 focus-visible:ring-slate-200" 
+                        />
+                      </div>
+                      <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-full sm:w-[200px] rounded-xl bg-slate-50/50 border-slate-200 focus:ring-slate-200">
+                          <Filter className="mr-2 h-4 w-4 text-slate-400" />
+                          <SelectValue placeholder="Filter status" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-slate-200">
+                          <SelectItem value="all">All statuses</SelectItem>
+                          <SelectItem value="Recovery Candidate">Recovery Candidate</SelectItem>
+                          <SelectItem value="Management Action Likely">Management Action Likely</SelectItem>
+                          <SelectItem value="High Delisting Risk">High Delisting Risk</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="px-6 pb-6 flex-1">
+                  <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm bg-white">
+                    <Table>
+                      <TableHeader className="bg-slate-50/80">
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="font-semibold text-slate-600">Ticker</TableHead>
+                          <TableHead className="font-semibold text-slate-600">Status</TableHead>
+                          <TableHead className="font-semibold text-slate-600">Price</TableHead>
+                          <TableHead className="font-semibold text-slate-600">Days &lt; $1</TableHead>
+                          <TableHead className="font-semibold text-slate-600">Bounce %</TableHead>
+                          <TableHead className="font-semibold text-slate-600">Tradability</TableHead>
+                          <TableHead></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {stocks.map((stock) => (
+                          <TableRow 
+                            key={stock.ticker} 
+                            className="cursor-pointer hover:bg-slate-50/80 transition-colors" 
+                            onClick={() => handleRowClick(stock)}
+                          >
+                            <TableCell className="py-4">
+                              <div>
+                                <div className="font-bold text-slate-900">{stock.ticker}</div>
+                                <div className="text-xs text-slate-500 font-medium">{stock.company}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={`rounded-lg px-2.5 py-0.5 font-medium whitespace-nowrap ${statusPill(stock.status)}`}>
+                                {stock.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-semibold text-slate-700">${stock.price.toFixed(2)}</TableCell>
+                            <TableCell className="text-slate-600">{stock.daysUnderOne}</TableCell>
+                            <TableCell>
+                              <span className={`font-bold ${stock.bounceProbability >= 65 ? 'text-emerald-600' : stock.bounceProbability >= 50 ? 'text-amber-600' : 'text-rose-600'}`}>
+                                {stock.bounceProbability}%
+                              </span>
+                            </TableCell>
+                            <TableCell className="font-medium text-slate-600">{stock.tradabilityScore}</TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="sm" className="rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100">Open</Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {stocks.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                              No setups found matching your filters.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Right Panel: Top Setups & Alerts */}
+              <div className="space-y-6">
+                <Card className="rounded-[2rem] shadow-sm border-slate-200/60">
+                  <CardHeader className="pt-6 px-6 pb-4">
+                    <CardTitle className="text-xl font-display font-bold">Top setups today</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 px-6 pb-6">
+                    {topSetups.map((stock) => (
+                      <button
+                        key={stock.ticker}
+                        onClick={() => handleRowClick(stock)}
+                        className="group w-full rounded-2xl border border-slate-200 bg-white p-5 text-left transition-all duration-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-xl font-bold font-display text-slate-900">{stock.ticker}</span>
+                              <Badge variant="outline" className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ${statusPill(stock.status)}`}>{stock.status}</Badge>
+                            </div>
+                            <p className="mt-1 text-sm font-medium text-slate-500">{stock.company}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Bounce</p>
+                            <p className="text-2xl font-bold text-slate-900">{stock.bounceProbability}<span className="text-base text-slate-400">%</span></p>
+                          </div>
+                        </div>
+                        <div className="mt-5 grid grid-cols-3 gap-3 text-sm">
+                          <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100 group-hover:bg-white group-hover:ring-slate-200 transition-colors">
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Entry</p>
+                            <p className="mt-1 font-bold text-slate-700">{stock.entryZone}</p>
+                          </div>
+                          <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100 group-hover:bg-white group-hover:ring-slate-200 transition-colors">
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Target</p>
+                            <p className="mt-1 font-bold text-slate-700">{stock.targetZone}</p>
+                          </div>
+                          <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100 group-hover:bg-white group-hover:ring-slate-200 transition-colors">
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Window</p>
+                            <p className="mt-1 font-bold text-slate-700">{stock.tradeWindow}</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-[2rem] shadow-sm border-slate-200/60">
+                  <CardHeader className="pt-6 px-6 pb-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <CardTitle className="text-xl font-display font-bold">Today’s triggered alerts</CardTitle>
+                      <Badge variant="outline" className="rounded-lg px-2.5 py-1 font-semibold bg-slate-50 text-slate-600 border-slate-200">
+                        Watchlist: {watchlist.length}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 px-6 pb-6">
+                    {alerts.slice(0, 4).map((alert) => (
+                      <div key={alert.id} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 transition-colors hover:bg-slate-50">
+                        <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${alert.severity === 'critical' ? 'text-rose-500' : alert.severity === 'warning' ? 'text-amber-500' : 'text-blue-500'}`} />
+                        <p className="text-sm font-medium leading-relaxed text-slate-700">{alert.message}</p>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="detail" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
+            {selected ? (
+              <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+                {/* Left side: Stock Stats & Chart */}
+                <div className="space-y-6">
+                  <Card className="rounded-[2rem] shadow-sm border-slate-200/60">
+                    <CardContent className="p-6 md:p-8">
+                      <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-3 mb-2">
+                            <h2 className="text-4xl font-bold font-display tracking-tight text-slate-900">{selected.ticker}</h2>
+                            <Badge variant="outline" className={`rounded-lg px-2.5 py-1 text-sm font-semibold ${statusPill(selected.status)}`}>{selected.status}</Badge>
+                          </div>
+                          <p className="text-base font-medium text-slate-500">{selected.company} • {selected.exchange} • {selected.industry}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 w-full md:w-auto">
+                          <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100 min-w-[120px]">
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Price</p>
+                            <p className="mt-1 text-2xl font-bold text-slate-900">${selected.price.toFixed(2)}</p>
+                          </div>
+                          <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100 min-w-[120px]">
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Volume</p>
+                            <p className="mt-1 text-2xl font-bold text-slate-900">{selected.volume}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-8 h-[360px] rounded-2xl bg-white border border-slate-100 shadow-inner shadow-slate-100/50 p-4">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={selected.chart} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#475569" stopOpacity={0.15} />
+                                <stop offset="95%" stopColor="#475569" stopOpacity={0.0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                            <XAxis 
+                              dataKey="d" 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} 
+                              dy={10}
+                            />
+                            <YAxis 
+                              domain={[0, 'dataMax + 0.2']} 
+                              axisLine={false} 
+                              tickLine={false}
+                              tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
+                              tickFormatter={(val) => `$${val.toFixed(2)}`}
+                            />
+                            <RechartsTooltip 
+                              contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                              formatter={(value: number) => [`$${value.toFixed(2)}`, 'Price']}
+                            />
+                            <ReferenceLine y={1} stroke="#ef4444" strokeDasharray="4 4" label={{ position: 'insideTopLeft', value: 'Compliance line', fill: '#ef4444', fontSize: 12, fontWeight: 600, dy: -10 }} />
+                            <Area type="monotone" dataKey="p" stroke="#334155" fill="url(#priceFill)" strokeWidth={3} activeDot={{ r: 6, strokeWidth: 0, fill: '#0f172a' }} />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <Card className="rounded-[1.5rem] shadow-sm border-slate-200/60 hover:shadow-md transition-shadow">
+                      <CardContent className="p-6">
+                        <p className="text-sm font-medium text-slate-500">Days under $1</p>
+                        <p className="mt-2 text-3xl font-bold text-slate-900">{selected.daysUnderOne}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="rounded-[1.5rem] shadow-sm border-slate-200/60 hover:shadow-md transition-shadow">
+                      <CardContent className="p-6">
+                        <p className="text-sm font-medium text-slate-500">Days to deadline</p>
+                        <p className="mt-2 text-3xl font-bold text-slate-900">{selected.daysToDeadline}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="rounded-[1.5rem] shadow-sm border-slate-200/60 hover:shadow-md transition-shadow">
+                      <CardContent className="p-6">
+                        <p className="text-sm font-medium text-slate-500">Bounce probability</p>
+                        <p className="mt-2 text-3xl font-bold text-slate-900">{selected.bounceProbability}%</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <ScoreCard title="Compliance Score" value={selected.complianceScore} icon={TrendingUp} note="Tracks price proximity to $1, time pressure, and cure path quality." />
+                    <ScoreCard title="Financial Strength" value={selected.financialScore} icon={DollarSign} note={selected.financialNote} />
+                    <ScoreCard title="Operator Score" value={selected.operatorScore} icon={Users} note={selected.operatorNote} />
+                    <ScoreCard title="Industry Survival" value={selected.industryScore} icon={Briefcase} note="Some sectors like biotech and EV have structurally worse survival odds." />
+                    <ScoreCard title="Pattern Score" value={selected.patternScore} icon={TrendingDown} note="Flags dilution loops, reverse split tendencies, and pop-and-fade behavior." />
+                    <ScoreCard title="Tradability" value={selected.tradabilityScore} icon={Building2} note="Measures range quality, liquidity, spread, and movement structure." />
+                  </div>
+                </div>
+
+                {/* Right side: Trade Plan & Notes */}
+                <div className="space-y-6">
+                  <Card className="rounded-[2rem] shadow-sm border-slate-200/60">
+                    <CardHeader className="pt-6 px-6 pb-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <CardTitle className="text-xl font-display font-bold">Suggested trade plan</CardTitle>
+                        <Select value={strategyMode} onValueChange={setStrategyMode}>
+                          <SelectTrigger className="w-[170px] rounded-xl bg-slate-50/50 border-slate-200">
+                            <SelectValue placeholder="Strategy mode" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border-slate-200">
+                            <SelectItem value="conservative">Conservative</SelectItem>
+                            <SelectItem value="balanced">Balanced</SelectItem>
+                            <SelectItem value="aggressive">Aggressive</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-5 px-6 pb-6">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-2xl bg-blue-50/50 p-4 ring-1 ring-blue-100">
+                          <p className="text-xs font-semibold text-blue-600/70 uppercase tracking-wider">Entry zone</p>
+                          <p className="mt-1.5 text-lg font-bold text-slate-900">{adjustedTradePlan?.entry}</p>
+                        </div>
+                        <div className="rounded-2xl bg-emerald-50/50 p-4 ring-1 ring-emerald-100">
+                          <p className="text-xs font-semibold text-emerald-600/70 uppercase tracking-wider">Target zone</p>
+                          <p className="mt-1.5 text-lg font-bold text-slate-900">{adjustedTradePlan?.target}</p>
+                        </div>
+                        <div className="rounded-2xl bg-rose-50/50 p-4 ring-1 ring-rose-100">
+                          <p className="text-xs font-semibold text-rose-600/70 uppercase tracking-wider">Stop</p>
+                          <p className="mt-1.5 text-lg font-bold text-slate-900">{adjustedTradePlan?.stop}</p>
+                        </div>
+                        <div className="rounded-2xl bg-amber-50/50 p-4 ring-1 ring-amber-100">
+                          <p className="text-xs font-semibold text-amber-600/70 uppercase tracking-wider">Time window</p>
+                          <p className="mt-1.5 text-lg font-bold text-slate-900">{selected.tradeWindow}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50/30 p-5">
+                        <p className="text-sm font-bold text-slate-900">Interpretation</p>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                          This is a probability-driven setup, not a guarantee. The model favors structured entries before a potential compliance push and exits into strength rather than long-term holding.
+                        </p>
+                      </div>
+                      
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50/30 p-5">
+                        <p className="text-sm font-bold text-slate-900">Position sizing</p>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-600">{adjustedTradePlan?.sizing}</p>
+                      </div>
+                      
+                      <Button 
+                        size="lg"
+                        className={`w-full rounded-xl font-bold transition-all shadow-sm ${
+                          watchlist.includes(selected.ticker) 
+                            ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300' 
+                            : 'bg-slate-900 text-white hover:bg-slate-800 hover:shadow-md'
+                        }`}
+                        onClick={() => toggleWatchlist(selected.ticker)}
+                      >
+                        {watchlist.includes(selected.ticker) ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="rounded-[2rem] shadow-sm border-slate-200/60">
+                    <CardHeader className="pt-6 px-6 pb-4">
+                      <CardTitle className="text-xl font-display font-bold">Model notes</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4 px-6 pb-6 text-sm text-slate-600">
+                      <div className="rounded-2xl border border-slate-200 bg-white p-5 hover:border-slate-300 transition-colors">
+                        <p className="font-bold text-slate-900">Why this score is not higher</p>
+                        <p className="mt-2 leading-relaxed">Low-priced names can still fail even when they approach $1, especially if business quality is weak or dilution pressure returns.</p>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-white p-5 hover:border-slate-300 transition-colors">
+                        <p className="font-bold text-slate-900">What would improve this setup</p>
+                        <p className="mt-2 leading-relaxed">Tighter price action near support, improving dollar volume, cleaner capital behavior, and signs the company can regain compliance without extreme corporate actions.</p>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-white p-5 hover:border-slate-300 transition-colors">
+                        <p className="font-bold text-slate-900">What would break the thesis</p>
+                        <p className="mt-2 leading-relaxed">Fresh dilution, failed support zones, worsening runway, or additional exchange deficiencies beyond price.</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            ) : (
+              <div className="flex h-64 items-center justify-center rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+                <p className="text-slate-500 font-medium">Select a setup from the Scanner to view details.</p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="pricing" className="focus-visible:outline-none focus-visible:ring-0">
+            <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto py-8">
+              {[
+                {
+                  title: 'Starter',
+                  price: '$49',
+                  description: 'Perfect for part-time traders looking for the best daily setups.',
+                  items: ['Live scanner', 'Daily ranked list', 'Basic watchlist', 'Core scoring model'],
+                  button: 'Start Trial',
+                  popular: false
+                },
+                {
+                  title: 'Pro Signals',
+                  price: '$149',
+                  description: 'Complete intelligence for dedicated small-cap operators.',
+                  items: ['Everything in Starter', 'Trade plan module', 'Real-time alerts', 'Top setups feed'],
+                  button: 'Upgrade to Pro',
+                  popular: true
+                },
+                {
+                  title: 'Desk / API',
+                  price: '$799',
+                  description: 'Institutional-grade data access and customized filtering.',
+                  items: ['Everything in Pro', 'API access', 'Bulk exports', 'Advanced analytics'],
+                  button: 'Contact Sales',
+                  popular: false
+                }
+              ].map((plan, idx) => (
+                <motion.div 
+                  key={plan.title} 
+                  initial={{ opacity: 0, y: 20 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ delay: idx * 0.1, duration: 0.5, ease: "easeOut" }}
+                  className="relative h-full"
+                >
+                  {plan.popular && (
+                    <div className="absolute -top-4 left-0 right-0 flex justify-center z-10">
+                      <span className="rounded-full bg-slate-900 px-4 py-1 text-xs font-bold text-white shadow-md">Most Popular</span>
+                    </div>
+                  )}
+                  <Card className={`h-full rounded-[2rem] shadow-sm transition-all duration-300 hover:shadow-xl ${plan.popular ? 'border-slate-400 ring-2 ring-slate-900/5' : 'border-slate-200/60'}`}>
+                    <CardHeader className="p-8 pb-4 text-center">
+                      <CardTitle className="text-2xl font-display font-bold text-slate-900">{plan.title}</CardTitle>
+                      <p className="mt-2 text-sm text-slate-500 px-4">{plan.description}</p>
+                      <div className="mt-6 flex items-baseline justify-center">
+                        <span className="text-5xl font-extrabold tracking-tight text-slate-900">{plan.price}</span>
+                        <span className="ml-1 text-base font-medium text-slate-500">/ month</span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-8 pt-4 flex flex-col h-[calc(100%-200px)]">
+                      <div className="space-y-4 flex-1 mt-4">
+                        {plan.items.map((item) => (
+                          <div key={item} className="flex items-center gap-3">
+                            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100">
+                              <svg className="h-3 w-3 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            </div>
+                            <span className="text-sm font-medium text-slate-600">{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <Button 
+                        size="lg" 
+                        className={`w-full mt-8 rounded-xl font-bold ${plan.popular ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-900 hover:bg-slate-200'}`}
+                      >
+                        {plan.button}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}

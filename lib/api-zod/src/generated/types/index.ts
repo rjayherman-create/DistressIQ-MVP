@@ -6,4 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./alert";
+export * from "./alertSeverity";
+export * from "./chartPoint";
+export * from "./errorResponse";
 export * from "./healthStatus";
+export * from "./listStocksParams";
+export * from "./stock";
+export * from "./watchlistResponse";

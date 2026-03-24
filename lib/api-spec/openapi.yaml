@@ -1,6 +1,5 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
   description: API specification
@@ -10,6 +9,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: stocks
+    description: Distressed stock intelligence operations
 paths:
   /healthz:
     get:
@@ -24,6 +25,119 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /stocks:
+    get:
+      operationId: listStocks
+      tags: [stocks]
+      summary: List distressed stocks
+      description: Returns all tracked distressed stocks with scoring data
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by status
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Search query for ticker or company
+      responses:
+        "200":
+          description: List of stocks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Stock"
+  /stocks/{ticker}:
+    get:
+      operationId: getStock
+      tags: [stocks]
+      summary: Get stock detail
+      parameters:
+        - name: ticker
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stock detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Stock"
+        "404":
+          description: Stock not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /watchlist:
+    get:
+      operationId: getWatchlist
+      tags: [stocks]
+      summary: Get watchlist tickers
+      responses:
+        "200":
+          description: Watchlist tickers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchlistResponse"
+  /watchlist/{ticker}:
+    post:
+      operationId: addToWatchlist
+      tags: [stocks]
+      summary: Add ticker to watchlist
+      parameters:
+        - name: ticker
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated watchlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchlistResponse"
+    delete:
+      operationId: removeFromWatchlist
+      tags: [stocks]
+      summary: Remove ticker from watchlist
+      parameters:
+        - name: ticker
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated watchlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchlistResponse"
+  /alerts:
+    get:
+      operationId: listAlerts
+      tags: [stocks]
+      summary: List triggered alerts
+      responses:
+        "200":
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Alert"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +147,127 @@ components:
           type: string
       required:
         - status
-
+    ChartPoint:
+      type: object
+      properties:
+        d:
+          type: string
+        p:
+          type: number
+      required:
+        - d
+        - p
+    Stock:
+      type: object
+      properties:
+        ticker:
+          type: string
+        company:
+          type: string
+        price:
+          type: number
+        exchange:
+          type: string
+        industry:
+          type: string
+        daysUnderOne:
+          type: integer
+        daysToDeadline:
+          type: integer
+        bounceProbability:
+          type: integer
+        delistingRisk:
+          type: integer
+        complianceScore:
+          type: integer
+        financialScore:
+          type: integer
+        operatorScore:
+          type: integer
+        industryScore:
+          type: integer
+        patternScore:
+          type: integer
+        tradabilityScore:
+          type: integer
+        operatorNote:
+          type: string
+        financialNote:
+          type: string
+        tradeWindow:
+          type: string
+        entryZone:
+          type: string
+        targetZone:
+          type: string
+        stopZone:
+          type: string
+        status:
+          type: string
+        volume:
+          type: string
+        chart:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChartPoint"
+      required:
+        - ticker
+        - company
+        - price
+        - exchange
+        - industry
+        - daysUnderOne
+        - daysToDeadline
+        - bounceProbability
+        - delistingRisk
+        - complianceScore
+        - financialScore
+        - operatorScore
+        - industryScore
+        - patternScore
+        - tradabilityScore
+        - operatorNote
+        - financialNote
+        - tradeWindow
+        - entryZone
+        - targetZone
+        - stopZone
+        - status
+        - volume
+        - chart
+    WatchlistResponse:
+      type: object
+      properties:
+        tickers:
+          type: array
+          items:
+            type: string
+      required:
+        - tickers
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+        message:
+          type: string
+        ticker:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        createdAt:
+          type: string
+      required:
+        - id
+        - message
+        - ticker
+        - severity
+        - createdAt
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error

@@ -48,6 +48,28 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 - `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages that define it
 - `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
 
+## Artifacts
+
+### `artifacts/distressiq` (`@workspace/distressiq`)
+
+React + Vite frontend for the DistressIQ distressed-stock intelligence dashboard.
+
+- Pages: `src/pages/home.tsx` — mounts the full dashboard
+- Components: `src/components/distressiq-dashboard.tsx` — main dashboard with Scanner / Stock Detail / Pricing tabs; `src/components/score-card.tsx`
+- Hooks: `src/hooks/use-distressiq.ts` — React Query hooks for stocks, alerts, watchlist
+- Lib: `src/lib/mock-data.ts` (stock data), `src/lib/scoring.ts` (score/status pill helpers)
+- Dependencies: framer-motion, recharts, lucide-react, shadcn/ui
+
+### `artifacts/api-server` — DistressIQ API routes
+
+Routes added:
+- `GET /api/stocks` — list stocks with optional `?q=` and `?status=` filters, sorted by bounce probability
+- `GET /api/stocks/:ticker` — stock detail
+- `GET /api/watchlist` — get watchlist tickers
+- `POST /api/watchlist/:ticker` — add to watchlist
+- `DELETE /api/watchlist/:ticker` — remove from watchlist
+- `GET /api/alerts` — list triggered alerts
+
 ## Packages
 
 ### `artifacts/api-server` (`@workspace/api-server`)

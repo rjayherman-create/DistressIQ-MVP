@@ -5,14 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export interface HealthStatus {
-  status: string;
-}
-
-export interface ChartPoint {
-  d: string;
-  p: number;
-}
+import type { ChartPoint } from "./chartPoint";
 
 export interface Stock {
   ticker: string;
@@ -40,38 +33,3 @@ export interface Stock {
   volume: string;
   chart: ChartPoint[];
 }
-
-export interface WatchlistResponse {
-  tickers: string[];
-}
-
-export type AlertSeverity = (typeof AlertSeverity)[keyof typeof AlertSeverity];
-
-export const AlertSeverity = {
-  info: "info",
-  warning: "warning",
-  critical: "critical",
-} as const;
-
-export interface Alert {
-  id: string;
-  message: string;
-  ticker: string;
-  severity: AlertSeverity;
-  createdAt: string;
-}
-
-export interface ErrorResponse {
-  error: string;
-}
-
-export type ListStocksParams = {
-  /**
-   * Filter by status
-   */
-  status?: string;
-  /**
-   * Search query for ticker or company
-   */
-  q?: string;
-};

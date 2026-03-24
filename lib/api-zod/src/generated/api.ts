@@ -14,3 +14,128 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Returns all tracked distressed stocks with scoring data
+ * @summary List distressed stocks
+ */
+export const ListStocksQueryParams = zod.object({
+  status: zod.coerce.string().optional().describe("Filter by status"),
+  q: zod.coerce
+    .string()
+    .optional()
+    .describe("Search query for ticker or company"),
+});
+
+export const ListStocksResponseItem = zod.object({
+  ticker: zod.string(),
+  company: zod.string(),
+  price: zod.number(),
+  exchange: zod.string(),
+  industry: zod.string(),
+  daysUnderOne: zod.number(),
+  daysToDeadline: zod.number(),
+  bounceProbability: zod.number(),
+  delistingRisk: zod.number(),
+  complianceScore: zod.number(),
+  financialScore: zod.number(),
+  operatorScore: zod.number(),
+  industryScore: zod.number(),
+  patternScore: zod.number(),
+  tradabilityScore: zod.number(),
+  operatorNote: zod.string(),
+  financialNote: zod.string(),
+  tradeWindow: zod.string(),
+  entryZone: zod.string(),
+  targetZone: zod.string(),
+  stopZone: zod.string(),
+  status: zod.string(),
+  volume: zod.string(),
+  chart: zod.array(
+    zod.object({
+      d: zod.string(),
+      p: zod.number(),
+    }),
+  ),
+});
+export const ListStocksResponse = zod.array(ListStocksResponseItem);
+
+/**
+ * @summary Get stock detail
+ */
+export const GetStockParams = zod.object({
+  ticker: zod.coerce.string(),
+});
+
+export const GetStockResponse = zod.object({
+  ticker: zod.string(),
+  company: zod.string(),
+  price: zod.number(),
+  exchange: zod.string(),
+  industry: zod.string(),
+  daysUnderOne: zod.number(),
+  daysToDeadline: zod.number(),
+  bounceProbability: zod.number(),
+  delistingRisk: zod.number(),
+  complianceScore: zod.number(),
+  financialScore: zod.number(),
+  operatorScore: zod.number(),
+  industryScore: zod.number(),
+  patternScore: zod.number(),
+  tradabilityScore: zod.number(),
+  operatorNote: zod.string(),
+  financialNote: zod.string(),
+  tradeWindow: zod.string(),
+  entryZone: zod.string(),
+  targetZone: zod.string(),
+  stopZone: zod.string(),
+  status: zod.string(),
+  volume: zod.string(),
+  chart: zod.array(
+    zod.object({
+      d: zod.string(),
+      p: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Get watchlist tickers
+ */
+export const GetWatchlistResponse = zod.object({
+  tickers: zod.array(zod.string()),
+});
+
+/**
+ * @summary Add ticker to watchlist
+ */
+export const AddToWatchlistParams = zod.object({
+  ticker: zod.coerce.string(),
+});
+
+export const AddToWatchlistResponse = zod.object({
+  tickers: zod.array(zod.string()),
+});
+
+/**
+ * @summary Remove ticker from watchlist
+ */
+export const RemoveFromWatchlistParams = zod.object({
+  ticker: zod.coerce.string(),
+});
+
+export const RemoveFromWatchlistResponse = zod.object({
+  tickers: zod.array(zod.string()),
+});
+
+/**
+ * @summary List triggered alerts
+ */
+export const ListAlertsResponseItem = zod.object({
+  id: zod.string(),
+  message: zod.string(),
+  ticker: zod.string(),
+  severity: zod.enum(["info", "warning", "critical"]),
+  createdAt: zod.string(),
+});
+export const ListAlertsResponse = zod.array(ListAlertsResponseItem);

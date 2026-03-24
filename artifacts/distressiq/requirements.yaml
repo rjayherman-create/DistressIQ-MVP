@@ -1,0 +1,11 @@
+packages:
+  "framer-motion": "For smooth entry animations on dashboard elements and pricing cards"
+  "recharts": "For rendering the stock price area charts"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility function to efficiently merge Tailwind CSS classes"
+
+images: []
+
+notes:
+  - "The app relies on @workspace/api-client-react for data fetching but includes robust local mock data fallbacks in case the backend API is not fully running or seeded."
+  - "Watchlist data falls back to local storage if the API is unavailable."
