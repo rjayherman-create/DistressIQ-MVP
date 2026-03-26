@@ -20,6 +20,7 @@ import { statusPill } from '@/lib/scoring';
 import { ScoreCard } from './score-card';
 import { PeerComparison } from './peer-comparison';
 import { CycleScanner } from './cycle-scanner';
+import { SignalAlertsPanel, useAlertCount } from './signal-alerts-panel';
 import { historicalData, stockEvents, eventTypeConfig, PERIODS, periodDescriptions, type Period } from '@/lib/history-data';
 import type { Stock } from '@workspace/api-client-react';
 
@@ -30,6 +31,8 @@ export function DistressIQDashboard() {
   const [strategyMode, setStrategyMode] = useState('balanced');
   const [activeTab, setActiveTab] = useState('scanner');
   const [chartPeriod, setChartPeriod] = useState<Period>('3M');
+  const [showAlerts, setShowAlerts] = useState(false);
+  const alertCount = useAlertCount();
 
   const { data: stocks = [] } = useDashboardStocks({ q: query, status: statusFilter });
   const { data: alerts = [] } = useDashboardAlerts();
@@ -98,13 +101,30 @@ export function DistressIQDashboard() {
                 Rank sub-$2 distressed stocks by bounce probability, delisting risk, operator quality, business strength, and tradability.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Button className="rounded-xl px-6 bg-slate-900 hover:bg-slate-800 text-white shadow-md shadow-slate-900/10 transition-all active:scale-95">
                 Start Free Trial
               </Button>
-              <Button variant="outline" className="rounded-xl px-6 border-slate-200 text-slate-700 hover:bg-slate-50 transition-all active:scale-95">
-                View Alerts
-              </Button>
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAlerts(v => !v)}
+                  className="rounded-xl px-4 border-slate-200 text-slate-700 hover:bg-slate-50 transition-all active:scale-95 relative"
+                >
+                  <Bell className="h-4 w-4" />
+                  {alertCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 h-4.5 min-w-[18px] rounded-full bg-emerald-500 px-1 text-[9px] font-black text-white flex items-center justify-center shadow-sm">
+                      {alertCount}
+                    </span>
+                  )}
+                </Button>
+                {showAlerts && (
+                  <SignalAlertsPanel
+                    onClose={() => setShowAlerts(false)}
+                    onGoToCycles={() => { setActiveTab('cycles'); setShowAlerts(false); }}
+                  />
+                )}
+              </div>
             </div>
           </div>
         </motion.div>

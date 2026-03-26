@@ -1,12 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, ReferenceArea,
 } from 'recharts';
-import { TrendingUp, TrendingDown, ArrowRight, Activity, Search, ChevronRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowRight, Activity, Search, ChevronRight, Bell, BellOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { cyclicStocks, phaseConfig, type CyclePhase, type CyclicStock } from '@/lib/cycle-data';
+import { isWatching, toggleWatch } from '@/lib/notification-system';
 
 type SortKey = 'signal' | 'gain' | 'ticker' | 'consistency';
 type FilterPhase = 'all' | CyclePhase;
@@ -232,6 +233,19 @@ export function CycleScanner() {
   const [phaseFilter, setPhaseFilter] = useState<FilterPhase>('all');
   const [sortKey, setSortKey] = useState<SortKey>('signal');
   const [selectedTicker, setSelectedTicker] = useState<string>(cyclicStocks[0].ticker);
+  const [watchedSet, setWatchedSet] = useState<Set<string>>(
+    () => new Set(cyclicStocks.filter(s => isWatching(s.ticker)).map(s => s.ticker))
+  );
+
+  const handleToggleWatch = useCallback((e: React.MouseEvent, ticker: string) => {
+    e.stopPropagation();
+    toggleWatch(ticker);
+    setWatchedSet(prev => {
+      const next = new Set(prev);
+      if (next.has(ticker)) next.delete(ticker); else next.add(ticker);
+      return next;
+    });
+  }, []);
 
   const phaseCounts = useMemo(() => ({
     buy: cyclicStocks.filter(s => s.phase === 'buy').length,
@@ -351,11 +365,15 @@ export function CycleScanner() {
               {filtered.map(stock => {
                 const cfg = phaseConfig[stock.phase];
                 const isSelected = stock.ticker === selectedTicker;
+                const watching = watchedSet.has(stock.ticker);
                 return (
-                  <button
+                  <div
                     key={stock.ticker}
                     onClick={() => setSelectedTicker(stock.ticker)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 ${isSelected ? 'bg-slate-50 border-l-2 border-l-slate-700' : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={e => e.key === 'Enter' && setSelectedTicker(stock.ticker)}
+                    className={`cursor-pointer w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 ${isSelected ? 'bg-slate-50 border-l-2 border-l-slate-700' : ''}`}
                   >
                     <div className="shrink-0 h-8 w-8 rounded-xl flex items-center justify-center text-[10px] font-black" style={{ backgroundColor: cfg.dot + '22', color: cfg.dot }}>
                       {stock.ticker.slice(0, 2)}
@@ -366,6 +384,7 @@ export function CycleScanner() {
                         <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
                           {cfg.label}
                         </span>
+                        {watching && <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-violet-100 text-violet-700">Watch</span>}
                       </div>
                       <p className="text-[11px] text-slate-400 truncate">{stock.company}</p>
                       <SignalBar value={stock.signalStrength} />
@@ -375,8 +394,19 @@ export function CycleScanner() {
                       <p className="text-xs font-bold text-slate-700 mt-0.5">${stock.currentPrice.toFixed(3)}</p>
                       <p className="text-[10px] text-emerald-600 font-semibold">+{stock.avgCycleGain}%</p>
                     </div>
+                    <button
+                      onClick={e => handleToggleWatch(e, stock.ticker)}
+                      title={watching ? 'Stop watching' : 'Watch — get notified on signal change'}
+                      className={`shrink-0 rounded-xl p-1.5 transition-all ${
+                        watching
+                          ? 'bg-violet-100 text-violet-600 hover:bg-violet-200'
+                          : 'text-slate-300 hover:text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      {watching ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+                    </button>
                     {isSelected && <ChevronRight className="shrink-0 h-3.5 w-3.5 text-slate-400" />}
-                  </button>
+                  </div>
                 );
               })}
             </div>
