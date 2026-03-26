@@ -244,7 +244,10 @@ export function DistressIQDashboard() {
                           >
                             <TableCell className="py-4">
                               <div>
-                                <div className="font-bold text-slate-900">{stock.ticker}</div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold text-slate-900">{stock.ticker}</span>
+                                  <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-100">{stock.exchange}</span>
+                                </div>
                                 <div className="text-xs text-slate-500 font-medium">{stock.company}</div>
                               </div>
                             </TableCell>

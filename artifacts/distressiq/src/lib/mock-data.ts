@@ -72,8 +72,8 @@ export const mockStockData: Stock[] = [
     ]
   },
   {
-    ticker: 'FFAI',
-    company: 'Faraday Future',
+    ticker: 'FFIE',
+    company: 'Faraday Future Intelligent Electric',
     price: 0.35,
     exchange: 'NASDAQ',
     industry: 'EV',
@@ -145,7 +145,7 @@ export const mockStockData: Stock[] = [
 
 export const mockAlerts: Alert[] = [
   { id: '1', ticker: 'ALXO', message: 'ALXO moved within 4% of the $1 recovery line', severity: 'warning', createdAt: new Date().toISOString() },
-  { id: '2', ticker: 'FFAI', message: 'FFAI volume expanded more than 2.5x average', severity: 'info', createdAt: new Date().toISOString() },
+  { id: '2', ticker: 'FFIE', message: 'FFIE volume expanded more than 2.5x average', severity: 'info', createdAt: new Date().toISOString() },
   { id: '3', ticker: 'GAME', message: 'GAME remains late-stage after extension window', severity: 'critical', createdAt: new Date().toISOString() },
   { id: '4', ticker: 'TELA', message: 'TELA created a tighter support band near $0.78', severity: 'info', createdAt: new Date().toISOString() }
 ];

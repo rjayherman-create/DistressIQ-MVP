@@ -116,11 +116,13 @@ function StockDetail({ stock }: { stock: CyclicStock }) {
     <div className="flex flex-col gap-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-2xl font-black text-slate-900">{stock.ticker}</span>
             <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${cfg.bg} ${cfg.text} ${cfg.border}`}>{cfg.label}</span>
+            <span className="rounded-full border px-2 py-0.5 text-[10px] font-bold bg-blue-50 text-blue-600 border-blue-100">{stock.exchange}</span>
           </div>
           <p className="text-sm text-slate-500 mt-0.5">{stock.company} · {stock.industry}</p>
+          <p className="text-[10px] text-slate-400 mt-1">Tradeable on <span className="font-semibold text-slate-600">Robinhood</span> &amp; <span className="font-semibold text-slate-600">E-Trade</span></p>
         </div>
         <div className="text-right">
           <p className="text-2xl font-black text-slate-900">${stock.currentPrice.toFixed(3)}</p>
@@ -379,10 +381,13 @@ export function CycleScanner() {
                       {stock.ticker.slice(0, 2)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-sm font-black text-slate-900">{stock.ticker}</span>
                         <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
                           {cfg.label}
+                        </span>
+                        <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-blue-50 text-blue-600 border border-blue-100">
+                          {stock.exchange}
                         </span>
                         {watching && <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-violet-100 text-violet-700">Watch</span>}
                       </div>
