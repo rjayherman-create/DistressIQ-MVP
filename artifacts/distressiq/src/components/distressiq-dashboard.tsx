@@ -19,6 +19,7 @@ import { useDashboardStocks, useDashboardAlerts, useLocalWatchlist } from '@/hoo
 import { statusPill } from '@/lib/scoring';
 import { ScoreCard } from './score-card';
 import { PeerComparison } from './peer-comparison';
+import { CycleScanner } from './cycle-scanner';
 import { historicalData, stockEvents, eventTypeConfig, PERIODS, periodDescriptions, type Period } from '@/lib/history-data';
 import type { Stock } from '@workspace/api-client-react';
 
@@ -158,9 +159,10 @@ export function DistressIQDashboard() {
 
         {/* Main Interface Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-white p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-200/60 md:w-[520px] h-auto">
+          <TabsList className="grid w-full grid-cols-4 rounded-2xl bg-white p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-200/60 md:w-[680px] h-auto">
             <TabsTrigger value="scanner" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Scanner</TabsTrigger>
             <TabsTrigger value="detail" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Stock Detail</TabsTrigger>
+            <TabsTrigger value="cycles" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Cycle Scanner</TabsTrigger>
             <TabsTrigger value="pricing" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Pricing</TabsTrigger>
           </TabsList>
 
@@ -587,6 +589,10 @@ export function DistressIQDashboard() {
                 <p className="text-slate-500 font-medium">Select a setup from the Scanner to view details.</p>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="cycles" className="focus-visible:outline-none focus-visible:ring-0">
+            <CycleScanner />
           </TabsContent>
 
           <TabsContent value="pricing" className="focus-visible:outline-none focus-visible:ring-0">
