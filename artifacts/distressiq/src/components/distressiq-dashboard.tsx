@@ -42,6 +42,13 @@ export function DistressIQDashboard() {
   const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const dateString = now.toLocaleDateString([], { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
 
+  /** Returns a valid Date or null if the ISO string is missing or unparseable. */
+  const parseTimestamp = (ts: string | undefined): Date | null => {
+    if (!ts) return null;
+    const d = new Date(ts);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
   const { data: stocks = [] } = useDashboardStocks({ q: query, status: statusFilter });
   const { data: alerts = [] } = useDashboardAlerts();
   const { watchlist, toggleWatchlist } = useLocalWatchlist();
@@ -271,11 +278,11 @@ export function DistressIQDashboard() {
                             <TableCell>
                               <div>
                                 <span className="font-semibold text-slate-700">${stock.price.toFixed(2)}</span>
-                                {stock.priceTimestamp && (
+                                {(() => { const ts = parseTimestamp(stock.priceTimestamp); return ts ? (
                                   <p className="text-[10px] text-slate-400 tabular-nums mt-0.5">
-                                    {new Date(stock.priceTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                   </p>
-                                )}
+                                ) : null; })()}
                               </div>
                             </TableCell>
                             <TableCell className="text-slate-600">{stock.daysUnderOne}</TableCell>
@@ -406,20 +413,20 @@ export function DistressIQDashboard() {
                           <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100 min-w-[120px]">
                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Price</p>
                             <p className="mt-1 text-2xl font-bold text-slate-900">${selected.price.toFixed(2)}</p>
-                            {selected.priceTimestamp && (
+                            {(() => { const ts = parseTimestamp(selected.priceTimestamp); return ts ? (
                               <p className="mt-1 text-[10px] text-slate-400 tabular-nums">
-                                as of {new Date(selected.priceTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                as of {ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                               </p>
-                            )}
+                            ) : null; })()}
                           </div>
                           <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100 min-w-[120px]">
                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Volume</p>
                             <p className="mt-1 text-2xl font-bold text-slate-900">{selected.volume}</p>
-                            {selected.priceTimestamp && (
+                            {(() => { const ts = parseTimestamp(selected.priceTimestamp); return ts ? (
                               <p className="mt-1 text-[10px] text-slate-400 tabular-nums">
-                                {new Date(selected.priceTimestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                {ts.toLocaleDateString([], { month: 'short', day: 'numeric' })}
                               </p>
-                            )}
+                            ) : null; })()}
                           </div>
                         </div>
                       </div>
