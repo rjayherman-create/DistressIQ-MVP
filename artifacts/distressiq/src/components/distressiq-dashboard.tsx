@@ -21,6 +21,7 @@ import { ScoreCard } from './score-card';
 import { PeerComparison } from './peer-comparison';
 import { CycleScanner } from './cycle-scanner';
 import { SignalAlertsPanel, useAlertCount } from './signal-alerts-panel';
+import { BounceScoreBreakdown } from './bounce-score-breakdown';
 import { historicalData, stockEvents, eventTypeConfig, PERIODS, periodDescriptions, type Period } from '@/lib/history-data';
 import type { Stock } from '@workspace/api-client-react';
 
@@ -585,6 +586,8 @@ export function DistressIQDashboard() {
                       </Button>
                     </CardContent>
                   </Card>
+
+                  <BounceScoreBreakdown stock={selected} />
 
                   <Card className="rounded-[2rem] shadow-sm border-slate-200/60">
                     <CardHeader className="pt-6 px-6 pb-4">
