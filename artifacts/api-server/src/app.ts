@@ -38,7 +38,7 @@ app.use(express.static(path.join(__dirname, "../../distressiq/dist/public")));
 
 app.use("/api", router);
 
-app.get("*", (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, "../../distressiq/dist/public/index.html"));
 });
 
