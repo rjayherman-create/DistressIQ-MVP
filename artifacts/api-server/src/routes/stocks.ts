@@ -170,6 +170,7 @@ async function buildLiveStockData() {
       ...def,
       price: quote?.price ?? def.price,
       volume: quote?.volume ?? def.volume,
+      priceTimestamp: quote ? new Date(quote.fetchedAt).toISOString() : undefined,
       chart: history ?? def.chart,
     };
   });
@@ -221,6 +222,7 @@ router.get("/stocks/:ticker", async (req, res) => {
     ...def,
     price: quote?.price ?? def.price,
     volume: quote?.volume ?? def.volume,
+    priceTimestamp: quote ? new Date(quote.fetchedAt).toISOString() : undefined,
     chart: history ?? def.chart,
   };
 

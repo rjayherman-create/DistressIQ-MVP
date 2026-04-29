@@ -268,7 +268,16 @@ export function DistressIQDashboard() {
                                 {stock.status}
                               </Badge>
                             </TableCell>
-                            <TableCell className="font-semibold text-slate-700">${stock.price.toFixed(2)}</TableCell>
+                            <TableCell>
+                              <div>
+                                <span className="font-semibold text-slate-700">${stock.price.toFixed(2)}</span>
+                                {stock.priceTimestamp && (
+                                  <p className="text-[10px] text-slate-400 tabular-nums mt-0.5">
+                                    {new Date(stock.priceTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </p>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell className="text-slate-600">{stock.daysUnderOne}</TableCell>
                             <TableCell>
                               <span className={`font-bold ${stock.bounceProbability >= 65 ? 'text-emerald-600' : stock.bounceProbability >= 50 ? 'text-amber-600' : 'text-rose-600'}`}>
@@ -397,10 +406,20 @@ export function DistressIQDashboard() {
                           <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100 min-w-[120px]">
                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Price</p>
                             <p className="mt-1 text-2xl font-bold text-slate-900">${selected.price.toFixed(2)}</p>
+                            {selected.priceTimestamp && (
+                              <p className="mt-1 text-[10px] text-slate-400 tabular-nums">
+                                as of {new Date(selected.priceTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </p>
+                            )}
                           </div>
                           <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100 min-w-[120px]">
                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Volume</p>
                             <p className="mt-1 text-2xl font-bold text-slate-900">{selected.volume}</p>
+                            {selected.priceTimestamp && (
+                              <p className="mt-1 text-[10px] text-slate-400 tabular-nums">
+                                {new Date(selected.priceTimestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>

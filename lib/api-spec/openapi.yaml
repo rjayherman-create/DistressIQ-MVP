@@ -323,6 +323,10 @@ components:
           type: string
         volume:
           type: string
+        priceTimestamp:
+          type: string
+          format: date-time
+          description: ISO-8601 timestamp of when the price was last fetched from a live market data source. Absent when only static fallback data is available.
         chart:
           type: array
           items:
