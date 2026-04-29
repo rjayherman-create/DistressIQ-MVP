@@ -203,6 +203,22 @@ function buildCyclicStock(def: StockDef): CyclicStock {
 
 export const cyclicStocks: CyclicStock[] = dedupedDefs.map(buildCyclicStock);
 
+/**
+ * Returns a new array of CyclicStock with `currentPrice` replaced by the
+ * live price from `priceMap` wherever available.  All other fields
+ * (cycle math, history, scores) are preserved unchanged.
+ */
+export function applyRealPrices(
+  stocks: CyclicStock[],
+  priceMap: Record<string, number>
+): CyclicStock[] {
+  return stocks.map((s) => {
+    const realPrice = priceMap[s.ticker];
+    if (realPrice == null || !isFinite(realPrice)) return s;
+    return { ...s, currentPrice: realPrice };
+  });
+}
+
 export const phaseConfig: Record<CyclePhase, { bg: string; text: string; border: string; dot: string; label: string }> = {
   buy:     { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: '#10b981', label: 'Buy Zone' },
   rising:  { bg: 'bg-sky-50',    text: 'text-sky-700',     border: 'border-sky-200',     dot: '#0ea5e9', label: 'Rising'   },
