@@ -95,6 +95,7 @@ export function useDataFeedStatus(): DataFeedState {
 
   let status: DataFeedStatus = "loading";
   if (isError) {
+    // "stale" = feed was previously working but is now failing; "error" = never succeeded
     status = lastSuccessRef.current ? "stale" : "error";
   } else if (isSuccess) {
     status = "live";

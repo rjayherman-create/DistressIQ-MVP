@@ -79,7 +79,7 @@ export function LiveDataIndicator() {
 
       <span>{cfg.label}</span>
 
-      {elapsed !== null && status !== 'error' && (
+      {elapsed !== null && status !== 'error' && status !== 'loading' && (
         <span className="opacity-60">{formatElapsed(elapsed)}</span>
       )}
     </div>
