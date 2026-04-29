@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
   useListStocks,
@@ -52,6 +52,57 @@ export function useCyclicStocks(): CyclicStock[] {
 
   if (!priceMap) return cyclicStocks;
   return applyRealPrices(cyclicStocks, priceMap);
+}
+
+// Probe tickers used solely to check whether the live price feed is reachable
+const PROBE_TICKERS = "MVST,MULN,IDEX";
+
+export type DataFeedStatus = "live" | "stale" | "error" | "loading";
+
+export interface DataFeedState {
+  status: DataFeedStatus;
+  lastUpdatedAt: number | null; // epoch ms of most recent successful fetch
+  isFetching: boolean;
+}
+
+/**
+ * Polls /api/prices every 60 seconds to determine whether the app is
+ * receiving real-time stock data.
+ */
+export function useDataFeedStatus(): DataFeedState {
+  const lastSuccessRef = useRef<number | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
+
+  const { isFetching, isError, isSuccess } = useQuery<Record<string, number>>({
+    queryKey: ["data-feed-probe"],
+    queryFn: async () => {
+      const res = await fetch(`/api/prices?tickers=${PROBE_TICKERS}`);
+      if (!res.ok) throw new Error(`prices probe failed: ${res.status}`);
+      return res.json();
+    },
+    refetchInterval: 60_000,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  useEffect(() => {
+    if (isSuccess) {
+      const now = Date.now();
+      lastSuccessRef.current = now;
+      setLastUpdatedAt(now);
+    }
+  }, [isSuccess]);
+
+  let status: DataFeedStatus = "loading";
+  if (isError) {
+    status = lastSuccessRef.current ? "stale" : "error";
+  } else if (isSuccess) {
+    status = "live";
+  } else if (isFetching) {
+    status = "loading";
+  }
+
+  return { status, lastUpdatedAt, isFetching };
 }
 
 // Custom hook to manage watchlist, falling back to localStorage if API is unavailable

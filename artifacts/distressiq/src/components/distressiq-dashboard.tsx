@@ -21,6 +21,7 @@ import { ScoreCard } from './score-card';
 import { PeerComparison } from './peer-comparison';
 import { CycleScanner } from './cycle-scanner';
 import { SignalAlertsPanel, useAlertCount } from './signal-alerts-panel';
+import { LiveDataIndicator } from './live-data-indicator';
 import { historicalData, stockEvents, eventTypeConfig, PERIODS, periodDescriptions, type Period } from '@/lib/history-data';
 import type { Stock } from '@workspace/api-client-react';
 
@@ -90,9 +91,12 @@ export function DistressIQDashboard() {
         >
           <div className="flex flex-col gap-5 rounded-[2rem] bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-200/60 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200/50">
-                <Activity className="h-3.5 w-3.5" />
-                DistressIQ MVP
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200/50">
+                  <Activity className="h-3.5 w-3.5" />
+                  DistressIQ MVP
+                </div>
+                <LiveDataIndicator />
               </div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl font-display">
                 Pre-delisting opportunity intelligence
