@@ -77,7 +77,7 @@ export const historicalData: Record<string, StockHistory> = {
     ],
   },
 
-  FFAI: {
+  FFIE: {
     '1Y': [
       { d: 'Apr', p: 3.87 }, { d: 'May', p: 2.94 }, { d: 'Jun', p: 2.15 },
       { d: 'Jul', p: 1.68 }, { d: 'Aug', p: 2.11 }, { d: 'Sep', p: 1.54 },
@@ -215,7 +215,7 @@ export const stockEvents: Record<string, Record<Period, StockEvent[]>> = {
     ],
   },
 
-  FFAI: {
+  FFIE: {
     '1Y': [
       { d: 'Aug', message: 'Short squeeze event — +38% intraday before reversal', type: 'volume' },
       { d: 'Oct', message: 'NASDAQ compliance notice received', type: 'compliance' },

@@ -78,8 +78,8 @@ const stockData = [
     ],
   },
   {
-    ticker: "FFAI",
-    company: "Faraday Future",
+    ticker: "FFIE",
+    company: "Faraday Future Intelligent Electric",
     price: 0.35,
     exchange: "NASDAQ",
     industry: "EV",

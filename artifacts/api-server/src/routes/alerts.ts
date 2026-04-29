@@ -13,8 +13,8 @@ const alerts = [
   },
   {
     id: "2",
-    message: "FFAI volume expanded more than 2.5x average",
-    ticker: "FFAI",
+    message: "FFIE volume expanded more than 2.5x average",
+    ticker: "FFIE",
     severity: "info" as const,
     createdAt: new Date().toISOString(),
   },
