@@ -304,15 +304,8 @@ router.get("/stocks/:ticker", async (req, res) => {
     return;
   }
 
-  let confidenceScore: number;
-  if (!liveDataAvailable) {
-    confidenceScore = 0.40;
-  } else if (now - dataFreshnessMs > STALE_THRESHOLD_MS) {
-    confidenceScore = 0.55;
-  } else {
-    confidenceScore = 0.85;
-  }
-
+  // At this point live data is either absent (static fallback) or fresh.
+  const confidenceScore = liveDataAvailable ? 0.85 : 0.40;
   const sourcesCount = liveDataAvailable ? LIVE_SOURCES_COUNT : STATIC_SOURCES_COUNT;
 
   const stock = {

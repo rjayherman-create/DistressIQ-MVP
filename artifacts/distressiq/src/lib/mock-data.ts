@@ -1,5 +1,8 @@
 import type { Stock, Alert } from "@workspace/api-client-react";
 
+/** Confidence score used for all static mock entries (no live data available). */
+const MOCK_CONFIDENCE_SCORE = 0.65;
+
 export const mockStockData: Stock[] = [
   {
     ticker: 'TELA',
@@ -25,7 +28,7 @@ export const mockStockData: Stock[] = [
     stopZone: '$0.72',
     status: 'Recovery Candidate',
     volume: '133.6K',
-    confidenceScore: 0.65,
+    confidenceScore: MOCK_CONFIDENCE_SCORE,
     dataFreshnessMs: 0,
     sourcesCount: 1,
     chart: [
@@ -63,7 +66,7 @@ export const mockStockData: Stock[] = [
     stopZone: '$0.23',
     status: 'High Delisting Risk',
     volume: '589K',
-    confidenceScore: 0.65,
+    confidenceScore: MOCK_CONFIDENCE_SCORE,
     dataFreshnessMs: 0,
     sourcesCount: 1,
     chart: [
@@ -101,7 +104,7 @@ export const mockStockData: Stock[] = [
     stopZone: '$0.28',
     status: 'Management Action Likely',
     volume: '235.1M',
-    confidenceScore: 0.65,
+    confidenceScore: MOCK_CONFIDENCE_SCORE,
     dataFreshnessMs: 0,
     sourcesCount: 1,
     chart: [
@@ -139,7 +142,7 @@ export const mockStockData: Stock[] = [
     stopZone: '$0.88',
     status: 'Recovery Candidate',
     volume: '1.8M',
-    confidenceScore: 0.65,
+    confidenceScore: MOCK_CONFIDENCE_SCORE,
     dataFreshnessMs: 0,
     sourcesCount: 1,
     chart: [

@@ -284,7 +284,11 @@ export function DistressIQDashboard() {
                             <TableCell className="font-medium text-slate-600">{stock.tradabilityScore}</TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-1 min-w-[110px]">
-                                <Badge variant="outline" className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold w-fit ${confidenceBadgeClass(stock.confidenceScore)}`}>
+                                <Badge
+                                  variant="outline"
+                                  aria-label={`Data confidence score: ${Math.round(stock.confidenceScore * 100)} percent`}
+                                  className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold w-fit ${confidenceBadgeClass(stock.confidenceScore)}`}
+                                >
                                   {Math.round(stock.confidenceScore * 100)}% confidence
                                 </Badge>
                                 <span className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
@@ -398,7 +402,10 @@ export function DistressIQDashboard() {
                           <p className="text-base font-medium text-slate-500">{selected.company} • {selected.exchange} • {selected.industry}</p>
                           {/* Confidence metadata row */}
                           <div className="mt-3 flex flex-wrap items-center gap-3">
-                            <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold ${confidenceBadgeClass(selected.confidenceScore)}`}>
+                            <span
+                              aria-label={`Data confidence score: ${Math.round(selected.confidenceScore * 100)} percent`}
+                              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold ${confidenceBadgeClass(selected.confidenceScore)}`}
+                            >
                               <ShieldCheck className="h-3.5 w-3.5" />
                               Confidence: {Math.round(selected.confidenceScore * 100)}%
                             </span>
