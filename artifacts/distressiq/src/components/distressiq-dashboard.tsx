@@ -121,11 +121,11 @@ export function DistressIQDashboard() {
   };
 
   const saveSelectedToWatchlist = async () => {
-    for (const ticker of selectedTickers) {
-      if (!watchlist.includes(ticker)) {
-        await toggleWatchlist(ticker);
-      }
-    }
+    await Promise.all(
+      [...selectedTickers]
+        .filter(ticker => !watchlist.includes(ticker))
+        .map(ticker => toggleWatchlist(ticker))
+    );
     setSelectedTickers(new Set());
   };
 
@@ -234,7 +234,7 @@ export function DistressIQDashboard() {
 
         {/* Main Interface Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 rounded-2xl bg-white p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-200/60 md:w-[850px] h-auto">
+          <TabsList className="grid w-full grid-cols-5 rounded-2xl bg-white p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-200/60 h-auto">
             <TabsTrigger value="scanner" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Scanner</TabsTrigger>
             <TabsTrigger value="detail" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Stock Detail</TabsTrigger>
             <TabsTrigger value="cycles" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Cycle Scanner</TabsTrigger>
@@ -760,9 +760,7 @@ export function DistressIQDashboard() {
                       variant="outline"
                       className="rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 gap-2 transition-all active:scale-95"
                       onClick={async () => {
-                        for (const ticker of [...watchlist]) {
-                          await toggleWatchlist(ticker);
-                        }
+                        await Promise.all([...watchlist].map(ticker => toggleWatchlist(ticker)));
                       }}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -776,7 +774,7 @@ export function DistressIQDashboard() {
                   <div className="flex h-48 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50">
                     <Bookmark className="h-8 w-8 text-slate-300" />
                     <p className="text-sm font-medium text-slate-400">Your watchlist is empty.</p>
-                    <p className="text-xs text-slate-400">Go to the Scanner tab, check off stocks, and click <strong>Save to Watchlist</strong>.</p>
+                    <p className="text-xs text-slate-400">Go to the Scanner tab, select stocks using the checkboxes, and click <strong>Save to Watchlist</strong>.</p>
                   </div>
                 ) : (
                   <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm bg-white">
