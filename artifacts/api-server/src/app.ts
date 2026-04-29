@@ -39,13 +39,19 @@ app.use("/api", router);
 
 // Serve the built React frontend for all non-API routes
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const frontendDistPath = path.join(__dirname, "../../distressiq/dist/public");
+const frontendDistPath =
+  process.env["FRONTEND_DIST_PATH"] ??
+  path.join(__dirname, "../../distressiq/dist/public");
 
 app.use(express.static(frontendDistPath));
 
 // SPA fallback: serve index.html for any route not matched above
 app.use((_req, res) => {
-  res.sendFile(path.join(frontendDistPath, "index.html"));
+  res.sendFile(path.join(frontendDistPath, "index.html"), (err) => {
+    if (err) {
+      res.status(500).end();
+    }
+  });
 });
 
 export default app;
