@@ -30,7 +30,8 @@ export const pool: InstanceType<typeof Pool> = new Proxy(
   {} as InstanceType<typeof Pool>,
   {
     get(_, prop) {
-      return (getPool() as any)[prop as string];
+      const target = getPool();
+      return Reflect.get(target, prop, target);
     },
   },
 );
@@ -39,7 +40,8 @@ export const db: NodePgDatabase<typeof schema> = new Proxy(
   {} as NodePgDatabase<typeof schema>,
   {
     get(_, prop) {
-      return (getDb() as any)[prop as string];
+      const target = getDb();
+      return Reflect.get(target, prop, target);
     },
   },
 );
