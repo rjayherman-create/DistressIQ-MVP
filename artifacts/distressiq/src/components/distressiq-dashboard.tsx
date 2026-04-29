@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { 
   Search, Bell, TrendingUp, TrendingDown, AlertTriangle, 
   Filter, BarChart3, Activity, DollarSign, ShieldAlert, 
-  Building2, Users, Briefcase 
+  Building2, Users, Briefcase, RefreshCw, BookmarkPlus, Trash2, Bookmark
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -32,6 +33,7 @@ export function DistressIQDashboard() {
   const [activeTab, setActiveTab] = useState('scanner');
   const [chartPeriod, setChartPeriod] = useState<Period>('3M');
   const [showAlerts, setShowAlerts] = useState(false);
+  const [selectedTickers, setSelectedTickers] = useState<Set<string>>(new Set());
   const alertCount = useAlertCount();
 
   const [now, setNow] = useState(() => new Date());
@@ -49,7 +51,7 @@ export function DistressIQDashboard() {
     return isNaN(d.getTime()) ? null : d;
   };
 
-  const { data: stocks = [] } = useDashboardStocks({ q: query, status: statusFilter });
+  const { data: stocks = [], refetch: refetchStocks, isFetching: isScanning } = useDashboardStocks({ q: query, status: statusFilter });
   const { data: alerts = [] } = useDashboardAlerts();
   const { watchlist, toggleWatchlist } = useLocalWatchlist();
 
@@ -91,6 +93,40 @@ export function DistressIQDashboard() {
   const handleRowClick = (stock: Stock) => {
     setSelectedTicker(stock.ticker);
     setActiveTab('detail');
+  };
+
+  const handleScanAll = () => {
+    setSelectedTickers(new Set());
+    refetchStocks();
+  };
+
+  const toggleSelectTicker = (ticker: string) => {
+    setSelectedTickers(prev => {
+      const next = new Set(prev);
+      if (next.has(ticker)) {
+        next.delete(ticker);
+      } else {
+        next.add(ticker);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedTickers.size === stocks.length) {
+      setSelectedTickers(new Set());
+    } else {
+      setSelectedTickers(new Set(stocks.map(s => s.ticker)));
+    }
+  };
+
+  const saveSelectedToWatchlist = async () => {
+    for (const ticker of selectedTickers) {
+      if (!watchlist.includes(ticker)) {
+        await toggleWatchlist(ticker);
+      }
+    }
+    setSelectedTickers(new Set());
   };
 
   return (
@@ -198,10 +234,13 @@ export function DistressIQDashboard() {
 
         {/* Main Interface Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 rounded-2xl bg-white p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-200/60 md:w-[680px] h-auto">
+          <TabsList className="grid w-full grid-cols-5 rounded-2xl bg-white p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-200/60 md:w-[850px] h-auto">
             <TabsTrigger value="scanner" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Scanner</TabsTrigger>
             <TabsTrigger value="detail" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Stock Detail</TabsTrigger>
             <TabsTrigger value="cycles" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Cycle Scanner</TabsTrigger>
+            <TabsTrigger value="watchlist" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none flex items-center gap-1.5">
+              <Bookmark className="h-3.5 w-3.5" />Watchlist{watchlist.length > 0 && <span className="ml-1 rounded-full bg-slate-900 px-1.5 py-0.5 text-[9px] font-black text-white">{watchlist.length}</span>}
+            </TabsTrigger>
             <TabsTrigger value="pricing" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Pricing</TabsTrigger>
           </TabsList>
 
@@ -215,7 +254,25 @@ export function DistressIQDashboard() {
                       <CardTitle className="text-xl font-display font-bold">Opportunity scanner</CardTitle>
                       <p className="mt-1.5 text-sm text-slate-500">Filter for orderly sub-$2 names with compliance pressure.</p>
                     </div>
-                    <div className="flex flex-col gap-3 sm:flex-row">
+                    <div className="flex flex-col gap-3 sm:flex-row flex-wrap">
+                      <Button
+                        variant="outline"
+                        className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 gap-2 transition-all active:scale-95"
+                        onClick={handleScanAll}
+                        disabled={isScanning}
+                      >
+                        <RefreshCw className={`h-4 w-4 ${isScanning ? 'animate-spin' : ''}`} />
+                        {isScanning ? 'Scanning…' : 'Scan All'}
+                      </Button>
+                      {selectedTickers.size > 0 && (
+                        <Button
+                          className="rounded-xl bg-slate-900 text-white hover:bg-slate-800 gap-2 transition-all active:scale-95 shadow-md shadow-slate-900/10"
+                          onClick={saveSelectedToWatchlist}
+                        >
+                          <BookmarkPlus className="h-4 w-4" />
+                          Save {selectedTickers.size} to Watchlist
+                        </Button>
+                      )}
                       <div className="relative w-full sm:w-64">
                         <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                         <Input 
@@ -245,6 +302,13 @@ export function DistressIQDashboard() {
                     <Table>
                       <TableHeader className="bg-slate-50/80">
                         <TableRow className="hover:bg-transparent">
+                          <TableHead className="w-10">
+                            <Checkbox
+                              checked={stocks.length > 0 && selectedTickers.size === stocks.length}
+                              onCheckedChange={toggleSelectAll}
+                              aria-label="Select all"
+                            />
+                          </TableHead>
                           <TableHead className="font-semibold text-slate-600">Ticker</TableHead>
                           <TableHead className="font-semibold text-slate-600">Status</TableHead>
                           <TableHead className="font-semibold text-slate-600">Price</TableHead>
@@ -261,6 +325,13 @@ export function DistressIQDashboard() {
                             className="cursor-pointer hover:bg-slate-50/80 transition-colors" 
                             onClick={() => handleRowClick(stock)}
                           >
+                            <TableCell className="py-4" onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={selectedTickers.has(stock.ticker)}
+                                onCheckedChange={() => toggleSelectTicker(stock.ticker)}
+                                aria-label={`Select ${stock.ticker}`}
+                              />
+                            </TableCell>
                             <TableCell className="py-4">
                               <div>
                                 <div className="flex items-center gap-1.5">
@@ -299,7 +370,7 @@ export function DistressIQDashboard() {
                         ))}
                         {stocks.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                            <TableCell colSpan={8} className="h-32 text-center text-slate-500">
                               No setups found matching your filters.
                             </TableCell>
                           </TableRow>
@@ -671,6 +742,128 @@ export function DistressIQDashboard() {
 
           <TabsContent value="cycles" className="focus-visible:outline-none focus-visible:ring-0">
             <CycleScanner />
+          </TabsContent>
+
+          <TabsContent value="watchlist" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
+            <Card className="rounded-[2rem] shadow-sm border-slate-200/60">
+              <CardHeader className="pt-6 px-6 pb-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle className="text-xl font-display font-bold flex items-center gap-2">
+                      <Bookmark className="h-5 w-5 text-slate-600" />
+                      My Watchlist
+                    </CardTitle>
+                    <p className="mt-1.5 text-sm text-slate-500">Stocks you've saved. Click a row to view details or remove it.</p>
+                  </div>
+                  {watchlist.length > 0 && (
+                    <Button
+                      variant="outline"
+                      className="rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 gap-2 transition-all active:scale-95"
+                      onClick={async () => {
+                        for (const ticker of [...watchlist]) {
+                          await toggleWatchlist(ticker);
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Clear All
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="px-6 pb-6">
+                {watchlist.length === 0 ? (
+                  <div className="flex h-48 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50">
+                    <Bookmark className="h-8 w-8 text-slate-300" />
+                    <p className="text-sm font-medium text-slate-400">Your watchlist is empty.</p>
+                    <p className="text-xs text-slate-400">Go to the Scanner tab, check off stocks, and click <strong>Save to Watchlist</strong>.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm bg-white">
+                    <Table>
+                      <TableHeader className="bg-slate-50/80">
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="font-semibold text-slate-600">Ticker</TableHead>
+                          <TableHead className="font-semibold text-slate-600">Status</TableHead>
+                          <TableHead className="font-semibold text-slate-600">Price</TableHead>
+                          <TableHead className="font-semibold text-slate-600">Bounce %</TableHead>
+                          <TableHead className="font-semibold text-slate-600">Tradability</TableHead>
+                          <TableHead></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {watchlist.map((ticker) => {
+                          const stock = stocks.find(s => s.ticker === ticker);
+                          if (!stock) {
+                            return (
+                              <TableRow key={ticker}>
+                                <TableCell className="py-4">
+                                  <span className="font-bold text-slate-900">{ticker}</span>
+                                </TableCell>
+                                <TableCell colSpan={4} className="text-xs text-slate-400">Data not in current scan</TableCell>
+                                <TableCell>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 gap-1.5"
+                                    onClick={() => toggleWatchlist(ticker)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    Remove
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          }
+                          return (
+                            <TableRow
+                              key={ticker}
+                              className="cursor-pointer hover:bg-slate-50/80 transition-colors"
+                              onClick={() => { setSelectedTicker(ticker); setActiveTab('detail'); }}
+                            >
+                              <TableCell className="py-4">
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-bold text-slate-900">{stock.ticker}</span>
+                                    <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-100">{stock.exchange}</span>
+                                  </div>
+                                  <div className="text-xs text-slate-500 font-medium">{stock.company}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className={`rounded-lg px-2.5 py-0.5 font-medium whitespace-nowrap ${statusPill(stock.status)}`}>
+                                  {stock.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <span className="font-semibold text-slate-700">${stock.price.toFixed(2)}</span>
+                              </TableCell>
+                              <TableCell>
+                                <span className={`font-bold ${stock.bounceProbability >= 65 ? 'text-emerald-600' : stock.bounceProbability >= 50 ? 'text-amber-600' : 'text-rose-600'}`}>
+                                  {stock.bounceProbability}%
+                                </span>
+                              </TableCell>
+                              <TableCell className="font-medium text-slate-600">{stock.tradabilityScore}</TableCell>
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 gap-1.5"
+                                  onClick={() => toggleWatchlist(ticker)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Remove
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="pricing" className="focus-visible:outline-none focus-visible:ring-0">
