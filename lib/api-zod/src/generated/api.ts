@@ -51,6 +51,7 @@ export const ListStocksResponseItem = zod.object({
   stopZone: zod.string(),
   status: zod.string(),
   volume: zod.string(),
+  priceTimestamp: zod.string().optional(),
   chart: zod.array(
     zod.object({
       d: zod.string(),
@@ -91,6 +92,7 @@ export const GetStockResponse = zod.object({
   stopZone: zod.string(),
   status: zod.string(),
   volume: zod.string(),
+  priceTimestamp: zod.string().optional(),
   chart: zod.array(
     zod.object({
       d: zod.string(),
