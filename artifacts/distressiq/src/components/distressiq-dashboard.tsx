@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Search, Bell, TrendingUp, TrendingDown, AlertTriangle, 
@@ -33,6 +33,14 @@ export function DistressIQDashboard() {
   const [chartPeriod, setChartPeriod] = useState<Period>('3M');
   const [showAlerts, setShowAlerts] = useState(false);
   const alertCount = useAlertCount();
+
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dateString = now.toLocaleDateString([], { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
 
   const { data: stocks = [] } = useDashboardStocks({ q: query, status: statusFilter });
   const { data: alerts = [] } = useDashboardAlerts();
@@ -102,6 +110,10 @@ export function DistressIQDashboard() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-col items-end rounded-xl bg-slate-50 px-4 py-2.5 ring-1 ring-slate-200/60 min-w-[140px]">
+                <span className="text-xl font-bold tabular-nums text-slate-900 leading-tight">{timeString}</span>
+                <span className="text-xs font-medium text-slate-500 mt-0.5">{dateString}</span>
+              </div>
               <Button className="rounded-xl px-6 bg-slate-900 hover:bg-slate-800 text-white shadow-md shadow-slate-900/10 transition-all active:scale-95">
                 Start Free Trial
               </Button>
