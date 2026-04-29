@@ -6,7 +6,7 @@ const VERIFY_CONFIG = {
   requireSources: true,
   minConfidence: 0.75,
   allowAIOnly: false,
-  maxAgeMinutes: 1440, // 24 h freshness
+  maxAgeMinutes: 1440, // 24 hours freshness
 };
 
 // --- Types
@@ -126,7 +126,7 @@ ${output}
   try {
     const result = await runAI(checkPrompt);
     // Strip markdown code fences if present
-    const cleaned = result.replace(/```(?:json)?\s*/gi, "").replace(/```/g, "").trim();
+    const cleaned = result.replace(/```(?:json)?\s*|```/gi, "").trim();
     return JSON.parse(cleaned) as AICheckResult;
   } catch {
     return { valid: false, confidence: 0, issues: ["Invalid verification response"] };
