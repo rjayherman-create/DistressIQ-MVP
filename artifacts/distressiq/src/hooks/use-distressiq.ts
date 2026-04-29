@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
 import { 
-  useListStocks, 
-  useListAlerts, 
+  useListStocks,
+  getListStocksQueryKey,
+  useListAlerts,
+  getListAlertsQueryKey,
   useGetWatchlist,
+  getGetWatchlistQueryKey,
   useAddToWatchlist,
   useRemoveFromWatchlist
 } from "@workspace/api-client-react";
 import { mockStockData, mockAlerts, mockWatchlist } from "@/lib/mock-data";
 
 export function useDashboardStocks(params?: { q?: string; status?: string }) {
-  const query = useListStocks(params, { query: { retry: false, staleTime: 60000 } });
+  const query = useListStocks(params, { query: { queryKey: getListStocksQueryKey(params), retry: false, staleTime: 60000 } });
   
   // Robust fallback pattern
   const data = query.data ?? mockStockData.filter(s => {
@@ -22,7 +25,7 @@ export function useDashboardStocks(params?: { q?: string; status?: string }) {
 }
 
 export function useDashboardAlerts() {
-  const query = useListAlerts({ query: { retry: false, staleTime: 60000 } });
+  const query = useListAlerts({ query: { queryKey: getListAlertsQueryKey(), retry: false, staleTime: 60000 } });
   return { ...query, data: query.data ?? mockAlerts };
 }
 
@@ -33,7 +36,7 @@ export function useLocalWatchlist() {
     return saved ? JSON.parse(saved) : mockWatchlist;
   });
 
-  const apiQuery = useGetWatchlist({ query: { retry: false, staleTime: 60000 } });
+  const apiQuery = useGetWatchlist({ query: { queryKey: getGetWatchlistQueryKey(), retry: false, staleTime: 60000 } });
   const addMutation = useAddToWatchlist();
   const removeMutation = useRemoveFromWatchlist();
 
