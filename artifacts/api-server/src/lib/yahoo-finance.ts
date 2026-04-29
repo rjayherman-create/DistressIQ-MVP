@@ -1,4 +1,5 @@
 import { logger } from "./logger";
+import { fetchVerifiedPrices } from "./verified-price";
 
 const CACHE_TTL_MS = 60_000; // 60 seconds for prices
 const HISTORY_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours for historical data
@@ -49,8 +50,30 @@ export async function fetchQuotes(
 
   if (stale.length === 0) return result;
 
+  // Attempt cross-verified prices (Polygon + Alpha Vantage) first.
+  // Tickers that succeed are promoted to the result map; the remaining
+  // stale tickers fall through to the Yahoo Finance path below.
+  const verifiedPrices = await fetchVerifiedPrices(stale);
+  const stillStale: string[] = [];
+  for (const ticker of stale) {
+    const verifiedPrice = verifiedPrices.get(ticker);
+    if (verifiedPrice != null) {
+      const entry: PriceEntry = {
+        price: parseFloat(verifiedPrice.toFixed(4)),
+        volume: priceCache.get(ticker)?.volume ?? "—",
+        fetchedAt: now,
+      };
+      priceCache.set(ticker, entry);
+      result.set(ticker, entry);
+    } else {
+      stillStale.push(ticker);
+    }
+  }
+
+  if (stillStale.length === 0) return result;
+
   try {
-    const symbols = stale.join(",");
+    const symbols = stillStale.join(",");
     const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice,regularMarketVolume`;
     const res = await fetch(url, { headers: FETCH_HEADERS, signal: AbortSignal.timeout(5000) });
 
