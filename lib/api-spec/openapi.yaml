@@ -327,6 +327,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ChartPoint"
+        confidenceScore:
+          type: number
+          description: Model confidence 0–1 based on data freshness and source availability
+        dataFreshnessMs:
+          type: integer
+          description: Unix epoch ms of the last successful live price fetch; 0 means static data only
+        sourcesCount:
+          type: integer
+          description: Number of verified data sources contributing to this record
       required:
         - ticker
         - company
@@ -352,6 +361,9 @@ components:
         - status
         - volume
         - chart
+        - confidenceScore
+        - dataFreshnessMs
+        - sourcesCount
     WatchlistResponse:
       type: object
       properties:

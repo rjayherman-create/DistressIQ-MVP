@@ -32,4 +32,10 @@ export interface Stock {
   status: string;
   volume: string;
   chart: ChartPoint[];
+  /** Model confidence 0–1 based on data freshness and source availability */
+  confidenceScore: number;
+  /** Unix epoch ms of the last successful live price fetch; 0 means static data only */
+  dataFreshnessMs: number;
+  /** Number of verified data sources contributing to this record */
+  sourcesCount: number;
 }

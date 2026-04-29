@@ -27,9 +27,14 @@ function formatVolume(vol: number): string {
   return String(vol);
 }
 
+export type { PriceEntry };
+
 /**
  * Fetch current price and volume for a list of tickers in a single request.
  * Results are cached per-ticker for CACHE_TTL_MS.
+ * On re-fetch failure the most-recently cached entry is returned so callers
+ * can track data freshness (via fetchedAt) rather than silently falling back
+ * to static values with no staleness signal.
  */
 export async function fetchQuotes(
   tickers: string[]
@@ -84,6 +89,13 @@ export async function fetchQuotes(
       ? "Yahoo Finance quote fetch timed out — using cached/static values"
       : "Yahoo Finance quote fetch failed — using cached/static values"
     );
+    // On failure, surface any stale cached entries so callers can track freshness
+    for (const t of stale) {
+      const cached = priceCache.get(t);
+      if (cached && !result.has(t)) {
+        result.set(t, cached);
+      }
+    }
   }
 
   return result;

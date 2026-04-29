@@ -57,6 +57,9 @@ export const ListStocksResponseItem = zod.object({
       p: zod.number(),
     }),
   ),
+  confidenceScore: zod.number(),
+  dataFreshnessMs: zod.number(),
+  sourcesCount: zod.number(),
 });
 export const ListStocksResponse = zod.array(ListStocksResponseItem);
 
@@ -97,6 +100,9 @@ export const GetStockResponse = zod.object({
       p: zod.number(),
     }),
   ),
+  confidenceScore: zod.number(),
+  dataFreshnessMs: zod.number(),
+  sourcesCount: zod.number(),
 });
 
 /**

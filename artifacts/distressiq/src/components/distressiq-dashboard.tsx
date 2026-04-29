@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { 
   Search, Bell, TrendingUp, TrendingDown, AlertTriangle, 
   Filter, BarChart3, Activity, DollarSign, ShieldAlert, 
-  Building2, Users, Briefcase 
+  Building2, Users, Briefcase, ShieldCheck, Clock, Database
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
@@ -23,6 +23,23 @@ import { CycleScanner } from './cycle-scanner';
 import { SignalAlertsPanel, useAlertCount } from './signal-alerts-panel';
 import { historicalData, stockEvents, eventTypeConfig, PERIODS, periodDescriptions, type Period } from '@/lib/history-data';
 import type { Stock } from '@workspace/api-client-react';
+
+/** Format an epoch-ms timestamp as a human-readable freshness string. */
+function formatFreshness(dataFreshnessMs: number): string {
+  if (dataFreshnessMs === 0) return 'Static data';
+  const diffMs = Date.now() - dataFreshnessMs;
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin < 1) return 'Updated just now';
+  if (diffMin === 1) return 'Updated 1 min ago';
+  return `Updated ${diffMin} min ago`;
+}
+
+/** Tailwind classes for the confidence score badge. */
+function confidenceBadgeClass(score: number): string {
+  if (score >= 0.75) return 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30';
+  if (score >= 0.55) return 'bg-amber-500/15 text-amber-700 border-amber-500/30';
+  return 'bg-slate-200/60 text-slate-600 border-slate-300/50';
+}
 
 export function DistressIQDashboard() {
   const [query, setQuery] = useState('');
@@ -232,6 +249,7 @@ export function DistressIQDashboard() {
                           <TableHead className="font-semibold text-slate-600">Days &lt; $1</TableHead>
                           <TableHead className="font-semibold text-slate-600">Bounce %</TableHead>
                           <TableHead className="font-semibold text-slate-600">Tradability</TableHead>
+                          <TableHead className="font-semibold text-slate-600">Confidence</TableHead>
                           <TableHead></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -265,13 +283,28 @@ export function DistressIQDashboard() {
                             </TableCell>
                             <TableCell className="font-medium text-slate-600">{stock.tradabilityScore}</TableCell>
                             <TableCell>
+                              <div className="flex flex-col gap-1 min-w-[110px]">
+                                <Badge variant="outline" className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold w-fit ${confidenceBadgeClass(stock.confidenceScore)}`}>
+                                  {Math.round(stock.confidenceScore * 100)}% confidence
+                                </Badge>
+                                <span className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+                                  <Clock className="h-3 w-3 shrink-0" />
+                                  {formatFreshness(stock.dataFreshnessMs)}
+                                </span>
+                                <span className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+                                  <Database className="h-3 w-3 shrink-0" />
+                                  {stock.sourcesCount} verified source{stock.sourcesCount !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
                               <Button variant="ghost" size="sm" className="rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100">Open</Button>
                             </TableCell>
                           </TableRow>
                         ))}
                         {stocks.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                            <TableCell colSpan={8} className="h-32 text-center text-slate-500">
                               No setups found matching your filters.
                             </TableCell>
                           </TableRow>
@@ -363,6 +396,21 @@ export function DistressIQDashboard() {
                             <Badge variant="outline" className={`rounded-lg px-2.5 py-1 text-sm font-semibold ${statusPill(selected.status)}`}>{selected.status}</Badge>
                           </div>
                           <p className="text-base font-medium text-slate-500">{selected.company} • {selected.exchange} • {selected.industry}</p>
+                          {/* Confidence metadata row */}
+                          <div className="mt-3 flex flex-wrap items-center gap-3">
+                            <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold ${confidenceBadgeClass(selected.confidenceScore)}`}>
+                              <ShieldCheck className="h-3.5 w-3.5" />
+                              Confidence: {Math.round(selected.confidenceScore * 100)}%
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                              <Clock className="h-3.5 w-3.5 text-slate-400" />
+                              {formatFreshness(selected.dataFreshnessMs)}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                              <Database className="h-3.5 w-3.5 text-slate-400" />
+                              {selected.sourcesCount} verified source{selected.sourcesCount !== 1 ? 's' : ''}
+                            </span>
+                          </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3 w-full md:w-auto">
                           <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100 min-w-[120px]">
@@ -691,6 +739,16 @@ export function DistressIQDashboard() {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* User-facing guardrail / disclaimer */}
+        <div className="mt-10 rounded-2xl border border-slate-200/60 bg-slate-50/60 px-6 py-4 text-center">
+          <p className="text-xs leading-relaxed text-slate-500">
+            Scores are algorithmically generated from verified market data.{' '}
+            <span className="font-semibold text-slate-600">This is not financial advice.</span>{' '}
+            Data may be delayed or incomplete. Confidence scores and freshness indicators reflect the
+            reliability of available inputs — always verify independently before making trading decisions.
+          </p>
+        </div>
       </div>
     </div>
   );

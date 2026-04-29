@@ -4,8 +4,21 @@ import {
   GetStockResponse,
 } from "@workspace/api-zod";
 import { fetchQuotes, fetchWeeklyHistory } from "../lib/yahoo-finance";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
+
+/** Price data older than this is considered stale and will not be served. */
+const STALE_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+
+/**
+ * Number of distinct data points verified from live sources (price, volume,
+ * chart history — all from Yahoo Finance) when a live fetch succeeds.
+ */
+const LIVE_SOURCES_COUNT = 3;
+
+/** Sources count when only static analyst definitions are available. */
+const STATIC_SOURCES_COUNT = 1;
 
 // Static definitions — scores, notes, and trade plan zones are analyst-assigned.
 // Price, volume, and chart are overlaid with live data at request time.
@@ -158,6 +171,7 @@ const stockDefinitions = [
 const TICKERS = stockDefinitions.map((s) => s.ticker);
 
 async function buildLiveStockData() {
+  const now = Date.now();
   const [quotes, ...histories] = await Promise.all([
     fetchQuotes(TICKERS),
     ...TICKERS.map((t) => fetchWeeklyHistory(t)),
@@ -166,11 +180,31 @@ async function buildLiveStockData() {
   return stockDefinitions.map((def, i) => {
     const quote = quotes.get(def.ticker);
     const history = histories[i];
+
+    const dataFreshnessMs = quote?.fetchedAt ?? 0;
+    const liveDataAvailable = quote != null;
+
+    // Confidence is high when live data is fresh, lower when relying on
+    // stale cache, and low when falling back to static analyst definitions.
+    let confidenceScore: number;
+    if (!liveDataAvailable) {
+      confidenceScore = 0.40; // static fallback only
+    } else if (now - dataFreshnessMs > STALE_THRESHOLD_MS) {
+      confidenceScore = 0.55; // stale cache — approaching hard-fail territory
+    } else {
+      confidenceScore = 0.85; // fresh live data
+    }
+
+    const sourcesCount = liveDataAvailable ? LIVE_SOURCES_COUNT : STATIC_SOURCES_COUNT;
+
     return {
       ...def,
       price: quote?.price ?? def.price,
       volume: quote?.volume ?? def.volume,
       chart: history ?? def.chart,
+      confidenceScore,
+      dataFreshnessMs,
+      sourcesCount,
     };
   });
 }
@@ -179,6 +213,26 @@ router.get("/stocks", async (req, res) => {
   const { q, status } = req.query as { q?: string; status?: string };
 
   let results = await buildLiveStockData();
+
+  // Freshness guardrail: reject any record whose live price data is stale.
+  // Static-only records (dataFreshnessMs === 0) are always surfaced with a
+  // reduced confidence score rather than hard-failed, because they represent
+  // the analyst floor — not a broken live feed.
+  const now = Date.now();
+  const staleRecords = results.filter(
+    (s) => s.dataFreshnessMs > 0 && now - s.dataFreshnessMs > STALE_THRESHOLD_MS
+  );
+  if (staleRecords.length > 0) {
+    logger.error(
+      { tickers: staleRecords.map((s) => s.ticker), staleThresholdMs: STALE_THRESHOLD_MS },
+      "Price data exceeded staleness threshold — returning unavailable"
+    );
+    res.status(503).json({
+      status: "Unavailable",
+      reason: "Data stale — price data has not been refreshed within the required window",
+    });
+    return;
+  }
 
   if (q) {
     const lower = q.toLowerCase();
@@ -195,6 +249,22 @@ router.get("/stocks", async (req, res) => {
   }
 
   results.sort((a, b) => b.bounceProbability - a.bounceProbability);
+
+  // Audit log: record every scored list response for debugging and compliance.
+  logger.info({
+    event: "stocks_listed",
+    filters: { q, status },
+    count: results.length,
+    scores: results.map((s) => ({
+      ticker: s.ticker,
+      bounceProbability: s.bounceProbability,
+      confidenceScore: s.confidenceScore,
+      dataFreshnessMs: s.dataFreshnessMs,
+      sourcesCount: s.sourcesCount,
+      status: s.status,
+    })),
+    timestamp: now,
+  });
 
   const parsed = ListStocksResponse.parse(results);
   res.json(parsed);
@@ -217,12 +287,61 @@ router.get("/stocks/:ticker", async (req, res) => {
   ]);
 
   const quote = quotes.get(def.ticker);
+  const now = Date.now();
+  const dataFreshnessMs = quote?.fetchedAt ?? 0;
+  const liveDataAvailable = quote != null;
+
+  // Freshness guardrail: hard-fail if live data is stale beyond the threshold.
+  if (liveDataAvailable && now - dataFreshnessMs > STALE_THRESHOLD_MS) {
+    logger.error(
+      { ticker: def.ticker, dataFreshnessMs, staleThresholdMs: STALE_THRESHOLD_MS },
+      "Price data exceeded staleness threshold — returning unavailable"
+    );
+    res.status(503).json({
+      status: "Unavailable",
+      reason: "Data stale — price data has not been refreshed within the required window",
+    });
+    return;
+  }
+
+  let confidenceScore: number;
+  if (!liveDataAvailable) {
+    confidenceScore = 0.40;
+  } else if (now - dataFreshnessMs > STALE_THRESHOLD_MS) {
+    confidenceScore = 0.55;
+  } else {
+    confidenceScore = 0.85;
+  }
+
+  const sourcesCount = liveDataAvailable ? LIVE_SOURCES_COUNT : STATIC_SOURCES_COUNT;
+
   const stock = {
     ...def,
     price: quote?.price ?? def.price,
     volume: quote?.volume ?? def.volume,
     chart: history ?? def.chart,
+    confidenceScore,
+    dataFreshnessMs,
+    sourcesCount,
   };
+
+  // Audit log: record every individual stock score output.
+  logger.info({
+    event: "stock_scored",
+    ticker: def.ticker,
+    inputs: {
+      price: stock.price,
+      volume: stock.volume,
+      dataFreshnessMs,
+      sourcesCount,
+    },
+    output: {
+      bounceProbability: def.bounceProbability,
+      confidenceScore,
+      status: def.status,
+    },
+    timestamp: now,
+  });
 
   const parsed = GetStockResponse.parse(stock);
   res.json(parsed);
