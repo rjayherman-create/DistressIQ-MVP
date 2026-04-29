@@ -29,3 +29,4 @@ to = "/index.html"
 [services.env]
 PORT = "21135"
 BASE_PATH = "/"
+API_SERVER_PORT = "8080"
