@@ -6,6 +6,7 @@ import {
   fireWatchedNotifications, getWatchedTickers, toggleWatch,
   type SignalAlert,
 } from '@/lib/notification-system';
+import { useCyclicStocks } from '@/hooks/use-distressiq';
 
 function alertColor(type: SignalAlert['type']) {
   if (type === 'buy')     return { bg: 'bg-emerald-50', border: 'border-emerald-200', badge: 'bg-emerald-100 text-emerald-700', dot: '#10b981', label: 'BUY' };
@@ -39,22 +40,23 @@ interface SignalAlertsPanelProps {
 }
 
 export function SignalAlertsPanel({ onClose, onGoToCycles }: SignalAlertsPanelProps) {
+  const liveStocks = useCyclicStocks();
   const [alerts, setAlerts] = useState<SignalAlert[]>([]);
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [watchedCount, setWatchedCount] = useState(0);
   const [filter, setFilter] = useState<'all' | 'buy' | 'sell' | 'watched'>('all');
 
   const refresh = useCallback(() => {
-    setAlerts(buildSignalAlerts(cyclicStocks));
+    setAlerts(buildSignalAlerts(liveStocks));
     setPermission(getPushPermission());
     setWatchedCount(getWatchedTickers().length);
-  }, []);
+  }, [liveStocks]);
 
   useEffect(() => {
     refresh();
     // Also fire any pending push notifications for watched tickers
-    fireWatchedNotifications(cyclicStocks);
-  }, [refresh]);
+    fireWatchedNotifications(liveStocks);
+  }, [refresh, liveStocks]);
 
   const handleToggleWatch = (ticker: string) => {
     toggleWatch(ticker);
@@ -65,7 +67,7 @@ export function SignalAlertsPanel({ onClose, onGoToCycles }: SignalAlertsPanelPr
     const result = await requestPushPermission();
     setPermission(result);
     if (result === 'granted') {
-      fireWatchedNotifications(cyclicStocks);
+      fireWatchedNotifications(liveStocks);
     }
   };
 
@@ -215,10 +217,11 @@ export function SignalAlertsPanel({ onClose, onGoToCycles }: SignalAlertsPanelPr
 
 // Exported hook for getting the live alert count badge
 export function useAlertCount() {
+  const liveStocks = useCyclicStocks();
   const [count, setCount] = useState(0);
   useEffect(() => {
-    const alerts = buildSignalAlerts(cyclicStocks);
+    const alerts = buildSignalAlerts(liveStocks);
     setCount(alerts.filter(a => a.type === 'buy' || a.type === 'sell').length);
-  }, []);
+  }, [liveStocks]);
   return count;
 }

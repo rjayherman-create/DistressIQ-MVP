@@ -3,10 +3,13 @@ import {
   ListStocksResponse,
   GetStockResponse,
 } from "@workspace/api-zod";
+import { fetchQuotes, fetchWeeklyHistory } from "../lib/yahoo-finance";
 
 const router: IRouter = Router();
 
-const stockData = [
+// Static definitions — scores, notes, and trade plan zones are analyst-assigned.
+// Price, volume, and chart are overlaid with live data at request time.
+const stockDefinitions = [
   {
     ticker: "TELA",
     company: "TELA Bio",
@@ -78,8 +81,8 @@ const stockData = [
     ],
   },
   {
-    ticker: "FFAI",
-    company: "Faraday Future",
+    ticker: "FFIE",
+    company: "Faraday Future Intelligent Electric",
     price: 0.35,
     exchange: "NASDAQ",
     industry: "EV",
@@ -152,10 +155,30 @@ const stockData = [
   },
 ];
 
-router.get("/stocks", (req, res) => {
+const TICKERS = stockDefinitions.map((s) => s.ticker);
+
+async function buildLiveStockData() {
+  const [quotes, ...histories] = await Promise.all([
+    fetchQuotes(TICKERS),
+    ...TICKERS.map((t) => fetchWeeklyHistory(t)),
+  ]);
+
+  return stockDefinitions.map((def, i) => {
+    const quote = quotes.get(def.ticker);
+    const history = histories[i];
+    return {
+      ...def,
+      price: quote?.price ?? def.price,
+      volume: quote?.volume ?? def.volume,
+      chart: history ?? def.chart,
+    };
+  });
+}
+
+router.get("/stocks", async (req, res) => {
   const { q, status } = req.query as { q?: string; status?: string };
 
-  let results = [...stockData];
+  let results = await buildLiveStockData();
 
   if (q) {
     const lower = q.toLowerCase();
@@ -177,16 +200,29 @@ router.get("/stocks", (req, res) => {
   res.json(parsed);
 });
 
-router.get("/stocks/:ticker", (req, res) => {
+router.get("/stocks/:ticker", async (req, res) => {
   const { ticker } = req.params;
-  const stock = stockData.find(
+  const def = stockDefinitions.find(
     (s) => s.ticker.toUpperCase() === ticker.toUpperCase()
   );
 
-  if (!stock) {
+  if (!def) {
     res.status(404).json({ error: "Stock not found" });
     return;
   }
+
+  const [quotes, history] = await Promise.all([
+    fetchQuotes([def.ticker]),
+    fetchWeeklyHistory(def.ticker),
+  ]);
+
+  const quote = quotes.get(def.ticker);
+  const stock = {
+    ...def,
+    price: quote?.price ?? def.price,
+    volume: quote?.volume ?? def.volume,
+    chart: history ?? def.chart,
+  };
 
   const parsed = GetStockResponse.parse(stock);
   res.json(parsed);

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { cyclicStocks, phaseConfig, type CyclePhase, type CyclicStock } from '@/lib/cycle-data';
 import { isWatching, toggleWatch } from '@/lib/notification-system';
+import { useCyclicStocks } from '@/hooks/use-distressiq';
 
 type SortKey = 'signal' | 'gain' | 'ticker' | 'consistency';
 type FilterPhase = 'all' | CyclePhase;
@@ -231,6 +232,7 @@ function StockDetail({ stock }: { stock: CyclicStock }) {
 }
 
 export function CycleScanner() {
+  const liveStocks = useCyclicStocks();
   const [search, setSearch] = useState('');
   const [phaseFilter, setPhaseFilter] = useState<FilterPhase>('all');
   const [sortKey, setSortKey] = useState<SortKey>('signal');
@@ -250,14 +252,14 @@ export function CycleScanner() {
   }, []);
 
   const phaseCounts = useMemo(() => ({
-    buy: cyclicStocks.filter(s => s.phase === 'buy').length,
-    rising: cyclicStocks.filter(s => s.phase === 'rising').length,
-    peak: cyclicStocks.filter(s => s.phase === 'peak').length,
-    falling: cyclicStocks.filter(s => s.phase === 'falling').length,
-  }), []);
+    buy: liveStocks.filter(s => s.phase === 'buy').length,
+    rising: liveStocks.filter(s => s.phase === 'rising').length,
+    peak: liveStocks.filter(s => s.phase === 'peak').length,
+    falling: liveStocks.filter(s => s.phase === 'falling').length,
+  }), [liveStocks]);
 
   const filtered = useMemo(() => {
-    let list = [...cyclicStocks];
+    let list = [...liveStocks];
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(s => s.ticker.toLowerCase().includes(q) || s.company.toLowerCase().includes(q));
@@ -270,15 +272,15 @@ export function CycleScanner() {
       return a.ticker.localeCompare(b.ticker);
     });
     return list;
-  }, [search, phaseFilter, sortKey]);
+  }, [liveStocks, search, phaseFilter, sortKey]);
 
   const selectedStock = useMemo(
-    () => cyclicStocks.find(s => s.ticker === selectedTicker) || cyclicStocks[0],
-    [selectedTicker],
+    () => liveStocks.find(s => s.ticker === selectedTicker) || liveStocks[0],
+    [liveStocks, selectedTicker],
   );
 
   const phaseFilters: { value: FilterPhase; label: string; count: number; color: string }[] = [
-    { value: 'all',     label: 'All',       count: cyclicStocks.length, color: 'text-slate-600' },
+    { value: 'all',     label: 'All',       count: liveStocks.length, color: 'text-slate-600' },
     { value: 'buy',     label: 'Buy Zone',  count: phaseCounts.buy,     color: 'text-emerald-600' },
     { value: 'rising',  label: 'Rising',    count: phaseCounts.rising,  color: 'text-sky-600' },
     { value: 'peak',    label: 'Near Peak', count: phaseCounts.peak,    color: 'text-amber-600' },
@@ -298,7 +300,7 @@ export function CycleScanner() {
         <div>
           <h2 className="text-xl font-black text-slate-900">Cycle Pattern Scanner</h2>
           <p className="text-sm text-slate-500">
-            {cyclicStocks.length} sub-$1 stocks tracked — identifies range-bound oscillators and suggests optimal entry timing.
+            {liveStocks.length} sub-$1 stocks tracked — identifies range-bound oscillators and suggests optimal entry timing.
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">

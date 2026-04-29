@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { 
   useListStocks,
   getListStocksQueryKey,
@@ -10,6 +11,7 @@ import {
   useRemoveFromWatchlist
 } from "@workspace/api-client-react";
 import { mockStockData, mockAlerts, mockWatchlist } from "@/lib/mock-data";
+import { cyclicStocks, applyRealPrices, type CyclicStock } from "@/lib/cycle-data";
 
 export function useDashboardStocks(params?: { q?: string; status?: string }) {
   const query = useListStocks(params, { query: { queryKey: getListStocksQueryKey(params), retry: false, staleTime: 60000 } });
@@ -27,6 +29,29 @@ export function useDashboardStocks(params?: { q?: string; status?: string }) {
 export function useDashboardAlerts() {
   const query = useListAlerts({ query: { queryKey: getListAlertsQueryKey(), retry: false, staleTime: 60000 } });
   return { ...query, data: query.data ?? mockAlerts };
+}
+
+/**
+ * Returns cyclicStocks with currentPrice fields updated from the live
+ * /api/prices endpoint.  Falls back to the synthetic prices when the API
+ * is unavailable.
+ */
+export function useCyclicStocks(): CyclicStock[] {
+  const tickers = cyclicStocks.map((s) => s.ticker).join(",");
+
+  const { data: priceMap } = useQuery<Record<string, number>>({
+    queryKey: ["cyclic-prices", tickers],
+    queryFn: async () => {
+      const res = await fetch(`/api/prices?tickers=${tickers}`);
+      if (!res.ok) throw new Error(`prices fetch failed: ${res.status}`);
+      return res.json();
+    },
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  if (!priceMap) return cyclicStocks;
+  return applyRealPrices(cyclicStocks, priceMap);
 }
 
 // Custom hook to manage watchlist, falling back to localStorage if API is unavailable
