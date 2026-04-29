@@ -34,6 +34,9 @@ const stockDefinitions = [
     stopZone: "$0.72",
     status: "Recovery Candidate",
     volume: "133.6K",
+    source: "MLS" as const,
+    confidence: 0.74,
+    verified: true,
     chart: [
       { d: "W1", p: 1.34 },
       { d: "W2", p: 1.12 },
@@ -69,6 +72,9 @@ const stockDefinitions = [
     stopZone: "$0.23",
     status: "High Delisting Risk",
     volume: "589K",
+    source: "AI Generated" as const,
+    confidence: 0.51,
+    verified: false,
     chart: [
       { d: "W1", p: 0.74 },
       { d: "W2", p: 0.61 },
@@ -105,6 +111,9 @@ const stockDefinitions = [
     stopZone: "$0.28",
     status: "Management Action Likely",
     volume: "235.1M",
+    source: "AI Generated" as const,
+    confidence: 0.58,
+    verified: false,
     chart: [
       { d: "W1", p: 1.11 },
       { d: "W2", p: 0.92 },
@@ -142,6 +151,9 @@ const stockDefinitions = [
     stopZone: "$0.88",
     status: "Recovery Candidate",
     volume: "1.8M",
+    source: "MLS" as const,
+    confidence: 0.82,
+    verified: true,
     chart: [
       { d: "W1", p: 1.48 },
       { d: "W2", p: 1.27 },

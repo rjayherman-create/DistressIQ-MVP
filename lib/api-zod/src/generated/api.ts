@@ -27,6 +27,9 @@ export const ListStocksQueryParams = zod.object({
     .describe("Search query for ticker or company"),
 });
 
+export const listStocksResponseConfidenceMin = 0;
+export const listStocksResponseConfidenceMax = 1;
+
 export const ListStocksResponseItem = zod.object({
   ticker: zod.string(),
   company: zod.string(),
@@ -57,6 +60,12 @@ export const ListStocksResponseItem = zod.object({
       p: zod.number(),
     }),
   ),
+  source: zod.enum(["MLS", "User Input", "AI Generated"]),
+  confidence: zod
+    .number()
+    .min(listStocksResponseConfidenceMin)
+    .max(listStocksResponseConfidenceMax),
+  verified: zod.boolean(),
 });
 export const ListStocksResponse = zod.array(ListStocksResponseItem);
 
@@ -66,6 +75,9 @@ export const ListStocksResponse = zod.array(ListStocksResponseItem);
 export const GetStockParams = zod.object({
   ticker: zod.coerce.string(),
 });
+
+export const getStockResponseConfidenceMin = 0;
+export const getStockResponseConfidenceMax = 1;
 
 export const GetStockResponse = zod.object({
   ticker: zod.string(),
@@ -97,6 +109,12 @@ export const GetStockResponse = zod.object({
       p: zod.number(),
     }),
   ),
+  source: zod.enum(["MLS", "User Input", "AI Generated"]),
+  confidence: zod
+    .number()
+    .min(getStockResponseConfidenceMin)
+    .max(getStockResponseConfidenceMax),
+  verified: zod.boolean(),
 });
 
 /**

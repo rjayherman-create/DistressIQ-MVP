@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ChartPoint } from "./chartPoint";
+import type { DataSource } from "./dataSource";
 
 export interface Stock {
   ticker: string;
@@ -32,4 +33,11 @@ export interface Stock {
   status: string;
   volume: string;
   chart: ChartPoint[];
+  source: DataSource;
+  /**
+   * @minimum 0
+   * @maximum 1
+   */
+  confidence: number;
+  verified: boolean;
 }

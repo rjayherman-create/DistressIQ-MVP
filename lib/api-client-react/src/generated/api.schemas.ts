@@ -14,6 +14,14 @@ export interface ChartPoint {
   p: number;
 }
 
+export type DataSource = (typeof DataSource)[keyof typeof DataSource];
+
+export const DataSource = {
+  MLS: "MLS",
+  User_Input: "User Input",
+  AI_Generated: "AI Generated",
+} as const;
+
 export interface Stock {
   ticker: string;
   company: string;
@@ -39,6 +47,13 @@ export interface Stock {
   status: string;
   volume: string;
   chart: ChartPoint[];
+  source: DataSource;
+  /**
+   * @minimum 0
+   * @maximum 1
+   */
+  confidence: number;
+  verified: boolean;
 }
 
 export interface WatchlistResponse {

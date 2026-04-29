@@ -13,6 +13,7 @@ export * from "./authUser";
 export * from "./authUserEnvelope";
 export * from "./beginBrowserLoginParams";
 export * from "./chartPoint";
+export * from "./dataSource";
 export * from "./errorEnvelope";
 export * from "./errorResponse";
 export * from "./handleBrowserLoginCallbackParams";

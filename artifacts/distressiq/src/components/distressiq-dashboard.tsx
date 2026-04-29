@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { 
   Search, Bell, TrendingUp, TrendingDown, AlertTriangle, 
   Filter, BarChart3, Activity, DollarSign, ShieldAlert, 
-  Building2, Users, Briefcase 
+  Building2, Users, Briefcase, ShieldCheck, Database, Bot, UserPen
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
@@ -23,6 +23,46 @@ import { CycleScanner } from './cycle-scanner';
 import { SignalAlertsPanel, useAlertCount } from './signal-alerts-panel';
 import { historicalData, stockEvents, eventTypeConfig, PERIODS, periodDescriptions, type Period } from '@/lib/history-data';
 import type { Stock } from '@workspace/api-client-react';
+
+function DataProvenanceBadge({ stock }: { stock: Stock }) {
+  const sourceIcon =
+    stock.source === 'MLS' ? <Database className="h-3 w-3" /> :
+    stock.source === 'AI Generated' ? <Bot className="h-3 w-3" /> :
+    <UserPen className="h-3 w-3" />;
+
+  const sourceColor =
+    stock.source === 'MLS' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+    stock.source === 'AI Generated' ? 'bg-violet-50 text-violet-700 border-violet-200' :
+    'bg-amber-50 text-amber-700 border-amber-200';
+
+  const confidencePct = Math.round(stock.confidence * 100);
+  const confidenceColor =
+    confidencePct >= 75 ? 'text-emerald-600' :
+    confidencePct >= 55 ? 'text-amber-600' :
+    'text-rose-600';
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[11px] font-semibold ${sourceColor}`}>
+        {sourceIcon}
+        {stock.source}
+      </span>
+      <span className={`text-xs font-bold tabular-nums ${confidenceColor}`}>
+        {confidencePct}% confidence
+      </span>
+      {stock.verified ? (
+        <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+          <ShieldCheck className="h-3 w-3" />
+          Verified
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+          Unverified
+        </span>
+      )}
+    </div>
+  );
+}
 
 export function DistressIQDashboard() {
   const [query, setQuery] = useState('');
@@ -363,6 +403,9 @@ export function DistressIQDashboard() {
                             <Badge variant="outline" className={`rounded-lg px-2.5 py-1 text-sm font-semibold ${statusPill(selected.status)}`}>{selected.status}</Badge>
                           </div>
                           <p className="text-base font-medium text-slate-500">{selected.company} • {selected.exchange} • {selected.industry}</p>
+                          <div className="mt-2.5">
+                            <DataProvenanceBadge stock={selected} />
+                          </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3 w-full md:w-auto">
                           <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100 min-w-[120px]">
