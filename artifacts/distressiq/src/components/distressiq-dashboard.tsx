@@ -340,7 +340,24 @@ export function DistressIQDashboard() {
                     {alerts.slice(0, 4).map((alert) => (
                       <div key={alert.id} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 transition-colors hover:bg-slate-50">
                         <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${alert.severity === 'critical' ? 'text-rose-500' : alert.severity === 'warning' ? 'text-amber-500' : 'text-blue-500'}`} />
-                        <p className="text-sm font-medium leading-relaxed text-slate-700">{alert.message}</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                            <span className="rounded-full px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide bg-slate-100 text-slate-600 border border-slate-200">
+                              {alert.ticker}
+                            </span>
+                            <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide ${
+                              alert.severity === 'critical' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                              alert.severity === 'warning'  ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                                                              'bg-blue-100 text-blue-700 border border-blue-200'
+                            }`}>
+                              {alert.severity}
+                            </span>
+                            <span className="text-[10px] text-slate-400 ml-auto tabular-nums">
+                              {new Date(alert.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium leading-relaxed text-slate-700">{alert.message}</p>
+                        </div>
                       </div>
                     ))}
                   </CardContent>
