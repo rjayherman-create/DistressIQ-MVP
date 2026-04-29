@@ -26,6 +26,9 @@ if (!basePath) {
   );
 }
 
+const apiServerPort = Number(process.env.API_SERVER_PORT ?? "8080");
+const apiTarget = `http://localhost:${apiServerPort}`;
+
 export default defineConfig({
   base: basePath,
   plugins: [
@@ -65,6 +68,12 @@ export default defineConfig({
     fs: {
       strict: true,
       deny: ["**/.*"],
+    },
+    proxy: {
+      "/api": {
+        target: apiTarget,
+        changeOrigin: true,
+      },
     },
   },
   preview: {
