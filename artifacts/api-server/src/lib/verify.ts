@@ -2,6 +2,8 @@
 // ANTI-HALLUCINATION ENGINE
 // ==============================
 
+import { isFresh } from "./timestamp";
+
 const VERIFY_CONFIG = {
   requireSources: true,
   minConfidence: 0.75,
@@ -89,13 +91,7 @@ function validateSources(sources: Source[]): { valid: true; sources: Source[] } 
 // --- Freshness validation
 function validateFreshness(timestampISO?: string): boolean {
   if (!timestampISO) return false;
-
-  const now = Date.now();
-  const ts = new Date(timestampISO).getTime();
-  if (isNaN(ts)) return false;
-  const diff = (now - ts) / (1000 * 60);
-
-  return diff <= VERIFY_CONFIG.maxAgeMinutes;
+  return isFresh(timestampISO, VERIFY_CONFIG.maxAgeMinutes);
 }
 
 // --- AI self-check (second pass)

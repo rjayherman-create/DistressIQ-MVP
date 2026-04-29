@@ -1,6 +1,10 @@
 import { Router, type IRouter } from "express";
 import { verifyAIResponse, type Source } from "../lib/verify";
 import { generateAIResponse, runAI } from "../lib/ai-client";
+import { stampAIResponse } from "../lib/timestamp";
+
+const AI_SOURCE = "AI";
+const AI_FALLBACK_SOURCE = "AI:fallback";
 
 const router: IRouter = Router();
 
@@ -83,11 +87,11 @@ router.post("/ai/check", async (req, res) => {
 
   if (!result.success) {
     // Return the safe fallback text as the answer
-    res.json({ answer: result.safeFallback.message });
+    res.json(stampAIResponse(result.safeFallback.message, AI_FALLBACK_SOURCE));
     return;
   }
 
-  res.json({ answer: result.data.output });
+  res.json(stampAIResponse(result.data.output, AI_SOURCE));
 });
 
 // ---------------------------------------------------------------------------
@@ -131,7 +135,7 @@ router.post("/generate", async (req, res) => {
     return;
   }
 
-  res.json(result);
+  res.json(stampAIResponse(result.data, AI_SOURCE));
 });
 
 export default router;
