@@ -43,7 +43,7 @@ export function useCyclicStocks(): CyclicStock[] {
     queryKey: ["cyclic-prices", tickers],
     queryFn: async () => {
       const res = await fetch(`/api/prices?tickers=${tickers}`);
-      if (!res.ok) throw new Error(`prices fetch failed: ${res.status}`);
+      if (!res.ok) throw new Error(`prices fetch failed: ${res.status} ${res.statusText}`);
       return res.json();
     },
     staleTime: 60_000,

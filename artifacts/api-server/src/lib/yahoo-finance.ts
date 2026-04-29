@@ -54,7 +54,7 @@ export async function fetchQuotes(
     const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice,regularMarketVolume`;
     const res = await fetch(url, { headers: FETCH_HEADERS, signal: AbortSignal.timeout(5000) });
 
-    if (!res.ok) throw new Error(`Yahoo Finance quotes HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`Yahoo Finance quotes HTTP ${res.status} ${res.statusText}`);
 
     const json = (await res.json()) as {
       quoteResponse?: {
@@ -79,7 +79,11 @@ export async function fetchQuotes(
       }
     }
   } catch (err) {
-    logger.warn({ err }, "Yahoo Finance quote fetch failed — using cached/static values");
+    const isTimeout = err instanceof Error && err.name === "TimeoutError";
+    logger.warn({ err, timeout: isTimeout }, isTimeout
+      ? "Yahoo Finance quote fetch timed out — using cached/static values"
+      : "Yahoo Finance quote fetch failed — using cached/static values"
+    );
   }
 
   return result;
@@ -121,7 +125,7 @@ export async function fetchWeeklyHistory(ticker: string): Promise<ChartPoint[] |
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1wk&range=2mo`;
     const res = await fetch(url, { headers: FETCH_HEADERS, signal: AbortSignal.timeout(5000) });
 
-    if (!res.ok) throw new Error(`Yahoo Finance history HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`Yahoo Finance history HTTP ${res.status} ${res.statusText}`);
 
     const json = (await res.json()) as {
       chart?: {
@@ -149,7 +153,11 @@ export async function fetchWeeklyHistory(ticker: string): Promise<ChartPoint[] |
       return points;
     }
   } catch (err) {
-    logger.warn({ err, ticker }, "Yahoo Finance history fetch failed — keeping static chart");
+    const isTimeout = err instanceof Error && err.name === "TimeoutError";
+    logger.warn({ err, ticker, timeout: isTimeout }, isTimeout
+      ? `Yahoo Finance history fetch timed out for ${ticker} — keeping static chart`
+      : `Yahoo Finance history fetch failed for ${ticker} — keeping static chart`
+    );
   }
 
   return null;
