@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
+import { DisclaimerModal } from "@/components/disclaimer-modal";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <DisclaimerModal />
         <LoginGate />
         <Toaster />
       </TooltipProvider>

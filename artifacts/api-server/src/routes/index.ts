@@ -8,11 +8,19 @@ import pricesRouter from "./prices";
 import aiRouter from "./ai";
 import delistingRiskRouter from "./delisting-risk";
 import wishlistItemsRouter from "./wishlist-items";
+import disclaimerRouter from "./disclaimer";
+import { disclaimerMiddleware } from "../lib/disclaimer";
 
 const router: IRouter = Router();
 
+// Public routes — no disclaimer check required
 router.use(healthRouter);
 router.use(authRouter);
+router.use(disclaimerRouter);
+
+// Enforce disclaimer acceptance for all routes below this point
+router.use(disclaimerMiddleware);
+
 router.use(stocksRouter);
 router.use(watchlistRouter);
 router.use(alertsRouter);

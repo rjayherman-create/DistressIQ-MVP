@@ -7,6 +7,7 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 import { authMiddleware } from "./middlewares/authMiddleware";
 import { timestampMiddleware } from "./lib/timestamp";
+import { injectDisclaimer, disclaimerMiddleware } from "./lib/disclaimer";
 
 const app: Express = express();
 
@@ -35,6 +36,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(timestampMiddleware);
 app.use(authMiddleware);
+// Inject disclaimer into every JSON response
+app.use(injectDisclaimer);
 
 app.use(express.static(path.join(__dirname, "../../distressiq/dist/public")));
 
