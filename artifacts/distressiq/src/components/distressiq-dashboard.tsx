@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { 
   Search, Bell, TrendingUp, TrendingDown, AlertTriangle, 
   Filter, BarChart3, Activity, DollarSign, ShieldAlert, 
-  Building2, Users, Briefcase, Info
+  Building2, Users, Briefcase, Info, Star
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
@@ -22,6 +22,7 @@ import { ScoreCard } from './score-card';
 import { PeerComparison } from './peer-comparison';
 import { CycleScanner } from './cycle-scanner';
 import { SignalAlertsPanel, useAlertCount } from './signal-alerts-panel';
+import { WatchlistTab } from './watchlist-tab';
 import { historicalData, stockEvents, eventTypeConfig, PERIODS, periodDescriptions, type Period } from '@/lib/history-data';
 import type { Stock } from '@workspace/api-client-react';
 
@@ -91,7 +92,7 @@ export function DistressIQDashboard() {
   // isLiveData reflects only the stock scanner feed so the badge accurately
   // shows whether scored stock data (not just the static alerts list) is live.
   const isLiveData = stocksLive;
-  const { watchlist, toggleWatchlist } = useLocalWatchlist();
+  const { watchlists, activeListId, setActiveListId, activeList, watchlist, toggleWatchlist, createWatchlist, deleteWatchlist, renameWatchlist } = useLocalWatchlist();
 
   // ---------------------------------------------------------------------------
   // Stat counts & trend tracking
@@ -336,9 +337,17 @@ export function DistressIQDashboard() {
 
         {/* Main Interface Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 rounded-2xl bg-white p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-200/60 md:w-[680px] h-auto">
+          <TabsList className="grid w-full grid-cols-5 rounded-2xl bg-white p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-200/60 md:w-[850px] h-auto">
             <TabsTrigger value="scanner" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Scanner</TabsTrigger>
             <TabsTrigger value="detail" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Stock Detail</TabsTrigger>
+            <TabsTrigger value="watchlist" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">
+              Watchlist
+              {watchlist.length > 0 && (
+                <span className="ml-1.5 rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 data-[state=active]:bg-slate-300">
+                  {watchlist.length}
+                </span>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="cycles" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Cycle Scanner</TabsTrigger>
             <TabsTrigger value="pricing" className="rounded-xl py-2.5 text-sm font-medium data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-none">Pricing</TabsTrigger>
           </TabsList>
@@ -447,7 +456,18 @@ export function DistressIQDashboard() {
                             </TableCell>
                             <TableCell className="font-medium text-slate-600">{stock.tradabilityScore}</TableCell>
                             <TableCell>
-                              <Button variant="ghost" size="sm" className="rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100">Open</Button>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  title={watchlist.includes(stock.ticker) ? 'Remove from watchlist' : 'Add to watchlist'}
+                                  className={`rounded-lg px-2 transition-colors ${watchlist.includes(stock.ticker) ? 'text-amber-500 hover:text-amber-600 hover:bg-amber-50' : 'text-slate-300 hover:text-amber-500 hover:bg-amber-50'}`}
+                                  onClick={e => { e.stopPropagation(); toggleWatchlist(stock.ticker); }}
+                                >
+                                  <Star className={`h-3.5 w-3.5 ${watchlist.includes(stock.ticker) ? 'fill-current' : ''}`} />
+                                </Button>
+                                <Button variant="ghost" size="sm" className="rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100">Open</Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -513,7 +533,11 @@ export function DistressIQDashboard() {
                   <CardHeader className="pt-6 px-6 pb-4">
                     <div className="flex items-center justify-between gap-3">
                       <CardTitle className="text-xl font-display font-bold">Today’s triggered alerts</CardTitle>
-                      <Badge variant="outline" className="rounded-lg px-2.5 py-1 font-semibold bg-slate-50 text-slate-600 border-slate-200">
+                      <Badge
+                        variant="outline"
+                        className="rounded-lg px-2.5 py-1 font-semibold bg-slate-50 text-slate-600 border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors"
+                        onClick={() => setActiveTab('watchlist')}
+                      >
                         Watchlist: {watchlist.length}
                       </Badge>
                     </div>
@@ -838,6 +862,21 @@ export function DistressIQDashboard() {
                 <p className="text-slate-500 font-medium">Select a setup from the Scanner to view details.</p>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="watchlist" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
+            <WatchlistTab
+              watchlists={watchlists}
+              activeListId={activeListId}
+              setActiveListId={setActiveListId}
+              activeList={activeList}
+              stocks={stocks}
+              onToggleTicker={toggleWatchlist}
+              onCreateWatchlist={createWatchlist}
+              onDeleteWatchlist={deleteWatchlist}
+              onRenameWatchlist={renameWatchlist}
+              onViewDetail={(ticker) => { setSelectedTicker(ticker); setActiveTab('detail'); }}
+            />
           </TabsContent>
 
           <TabsContent value="cycles" className="focus-visible:outline-none focus-visible:ring-0">
