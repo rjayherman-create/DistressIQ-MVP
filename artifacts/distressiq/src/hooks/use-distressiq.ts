@@ -16,7 +16,9 @@ import { cyclicStocks, applyRealPrices, type CyclicStock } from "@/lib/cycle-dat
 export function useDashboardStocks(params?: { q?: string; status?: string }) {
   const query = useListStocks(params, { query: { queryKey: getListStocksQueryKey(params), retry: false, staleTime: 60000 } });
   
-  // Robust fallback pattern
+  // Robust fallback pattern — only use mock data once the query has settled
+  // (isLoading false).  During the initial fetch we still show mock data so
+  // the UI isn't empty, but isLiveData reflects whether the API succeeded.
   const stocks = query.data ?? mockStockData.filter(s => {
     const matchQuery = !params?.q || `${s.ticker} ${s.company} ${s.industry}`.toLowerCase().includes(params.q.toLowerCase());
     const matchStatus = !params?.status || params.status === 'all' || s.status === params.status;
@@ -46,6 +48,9 @@ export function useDashboardStocks(params?: { q?: string; status?: string }) {
       )
     : stocks;
 
+  // isLiveData is true when the API returned real stock data.
+  // While the query is still loading we leave it false (UI shows Demo briefly)
+  // but once it resolves successfully it flips to true.
   return { ...query, data, isLiveData: query.data != null };
 }
 
