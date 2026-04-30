@@ -193,6 +193,157 @@ export async function fetchPolygon(ticker: string): Promise<RawMarketData> {
 }
 
 // ---------------------------------------------------------------------------
+// fetchAlphaVantage
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch the latest price for a ticker from Alpha Vantage.
+ *
+ * Requires the ALPHA_VANTAGE_KEY environment variable.
+ * Throws if the key is missing, the network request fails, a rate-limit
+ * message is returned, or no price data is present for the ticker.
+ */
+export async function fetchAlphaVantage(ticker: string): Promise<RawMarketData> {
+  const apiKey = process.env.ALPHA_VANTAGE_KEY;
+  if (!apiKey) {
+    throw new Error("ALPHA_VANTAGE_KEY environment variable is not set");
+  }
+
+  const url =
+    `https://www.alphavantage.co/query?function=GLOBAL_QUOTE` +
+    `&symbol=${encodeURIComponent(ticker)}&apikey=${apiKey}`;
+
+  const res = await fetch(url, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+
+  if (!res.ok) {
+    throw new Error(
+      `Alpha Vantage HTTP ${res.status} ${res.statusText} for ${ticker}`,
+    );
+  }
+
+  const json = (await res.json()) as {
+    "Global Quote"?: {
+      "05. price"?: string;
+      "06. volume"?: string;
+    };
+    Note?: string;
+    Information?: string;
+  };
+
+  // Alpha Vantage returns rate-limit / info messages as top-level fields
+  if (json.Note || json.Information) {
+    throw new Error(
+      `Alpha Vantage rate limit or info: ${json.Note ?? json.Information}`,
+    );
+  }
+
+  const priceStr = json["Global Quote"]?.["05. price"];
+  if (!priceStr) {
+    throw new Error(`Alpha Vantage returned no price data for ${ticker}`);
+  }
+
+  const price = parseFloat(priceStr);
+  if (!isFinite(price) || price <= 0) {
+    throw new Error(
+      `Alpha Vantage returned invalid price for ${ticker}: ${priceStr}`,
+    );
+  }
+
+  const volumeStr = json["Global Quote"]?.["06. volume"];
+  const volume =
+    volumeStr !== undefined ? parseInt(volumeStr, 10) : undefined;
+
+  logger.debug(
+    { ticker, source: "alpha-vantage", price },
+    "fetchAlphaVantage ok",
+  );
+
+  return {
+    ticker: ticker.toUpperCase(),
+    price: Math.round(price * 10000) / 10000,
+    volume: volume !== undefined && isFinite(volume) ? volume : undefined,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// fetchPolygonBatch
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch current prices for multiple tickers in a single Polygon snapshot
+ * request.
+ *
+ * Requires the POLYGON_API_KEY environment variable.
+ * Returns a Map of uppercase ticker → RawMarketData for every ticker for
+ * which Polygon returned a usable price.  Tickers not present in the
+ * response (unknown symbol, etc.) are simply absent from the map — callers
+ * should fall back to their own defaults.
+ *
+ * Uses the `lastTrade.p` field when available and falls back to the day
+ * close `day.c`.
+ */
+export async function fetchPolygonBatch(
+  tickers: string[],
+): Promise<Map<string, RawMarketData>> {
+  const apiKey = process.env.POLYGON_API_KEY;
+  if (!apiKey) {
+    throw new Error("POLYGON_API_KEY environment variable is not set");
+  }
+
+  const tickerParam = tickers.map((t) => encodeURIComponent(t)).join(",");
+  const url =
+    `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers` +
+    `?tickers=${tickerParam}&apiKey=${apiKey}`;
+
+  const res = await fetch(url, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+
+  if (!res.ok) {
+    throw new Error(
+      `Polygon snapshot HTTP ${res.status} ${res.statusText}`,
+    );
+  }
+
+  const json = (await res.json()) as {
+    tickers?: Array<{
+      ticker?: string;
+      lastTrade?: { p?: number };
+      day?: { c?: number; v?: number };
+    }>;
+  };
+
+  const result = new Map<string, RawMarketData>();
+
+  for (const entry of json.tickers ?? []) {
+    const sym = entry.ticker?.toUpperCase();
+    if (!sym) continue;
+
+    const price = entry.lastTrade?.p ?? entry.day?.c;
+    if (price == null || !isFinite(price) || price <= 0) continue;
+
+    const volume = entry.day?.v;
+
+    logger.debug(
+      { ticker: sym, source: "polygon-batch", price },
+      "fetchPolygonBatch ok",
+    );
+
+    result.set(sym, {
+      ticker: sym,
+      price: Math.round(price * 10000) / 10000,
+      volume: volume !== undefined && isFinite(volume) ? volume : undefined,
+    });
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
 // fetchIEX
 // ---------------------------------------------------------------------------
 

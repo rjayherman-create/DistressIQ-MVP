@@ -4,6 +4,8 @@ import {
   GetStockResponse,
 } from "@workspace/api-zod";
 import { fetchQuotes, fetchWeeklyHistory } from "../lib/yahoo-finance";
+import { fetchPolygonBatch, fetchAlphaVantage, type RawMarketData } from "../lib/market-data";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -157,9 +159,105 @@ const stockDefinitions = [
 
 const TICKERS = stockDefinitions.map((s) => s.ticker);
 
+// ---------------------------------------------------------------------------
+// fetchLivePrices
+// ---------------------------------------------------------------------------
+// Attempts to build a price map from Polygon (batch) when POLYGON_API_KEY is
+// present.  For any tickers not covered by Polygon, Alpha Vantage is tried as
+// an individual fallback when ALPHA_VANTAGE_KEY is set.  Yahoo Finance is used
+// for all remaining tickers (or as the sole source when no API keys are set).
+
+/** Price and volume snapshot used internally by the stocks route. */
+interface PriceInfo {
+  price: number;
+  /** Human-readable volume string (e.g. '1.5M', '500K') — not a raw number. */
+  volume: string;
+  /** Unix timestamp (ms) of when the price was fetched. */
+  fetchedAt: number;
+}
+
+/**
+ * Format a raw volume number into a human-readable string with K/M suffixes.
+ * Returns null for undefined or non-finite inputs.
+ */
+function formatVol(vol: number | undefined): string | null {
+  if (vol == null || !isFinite(vol)) return null;
+  if (vol >= 1_000_000) return `${(vol / 1_000_000).toFixed(1)}M`;
+  if (vol >= 1_000) return `${(vol / 1_000).toFixed(1)}K`;
+  return String(vol);
+}
+
+/**
+ * Build a price map for the given tickers using the best available sources.
+ *
+ * Priority order:
+ *  1. Polygon batch snapshot (when POLYGON_API_KEY is set)
+ *  2. Alpha Vantage per-ticker (when ALPHA_VANTAGE_KEY is set, for any tickers
+ *     not covered by Polygon)
+ *  3. Yahoo Finance for all remaining tickers
+ *
+ * @param tickers - Uppercase ticker symbols to look up.
+ * @returns Map of ticker → PriceInfo for every ticker that could be priced.
+ */
+async function fetchLivePrices(
+  tickers: string[],
+): Promise<Map<string, PriceInfo>> {
+  const now = Date.now();
+  const result = new Map<string, PriceInfo>();
+
+  // --- Polygon batch ---
+  if (process.env.POLYGON_API_KEY) {
+    try {
+      const polygonData = await fetchPolygonBatch(tickers);
+      for (const [sym, data] of polygonData) {
+        result.set(sym, {
+          price: data.price,
+          volume: formatVol(data.volume) ?? "—",
+          fetchedAt: now,
+        });
+      }
+    } catch (err) {
+      logger.warn({ err }, "Polygon batch fetch failed — continuing to fallbacks");
+    }
+  }
+
+  // --- Alpha Vantage per-ticker (for any still missing) ---
+  if (process.env.ALPHA_VANTAGE_KEY) {
+    const missing = tickers.filter((t) => !result.has(t));
+    await Promise.all(
+      missing.map(async (ticker) => {
+        try {
+          const data: RawMarketData = await fetchAlphaVantage(ticker);
+          result.set(ticker, {
+            price: data.price,
+            volume: formatVol(data.volume) ?? "—",
+            fetchedAt: now,
+          });
+        } catch (err) {
+          logger.warn(
+            { ticker, err },
+            "Alpha Vantage fetch failed for ticker — falling through to Yahoo Finance",
+          );
+        }
+      }),
+    );
+  }
+
+  // --- Yahoo Finance for any still missing ---
+  const stillMissing = tickers.filter((t) => !result.has(t));
+  if (stillMissing.length > 0) {
+    const yahooQuotes = await fetchQuotes(stillMissing);
+    for (const [sym, entry] of yahooQuotes) {
+      result.set(sym, entry);
+    }
+  }
+
+  return result;
+}
+
 async function buildLiveStockData() {
   const [quotes, ...histories] = await Promise.all([
-    fetchQuotes(TICKERS),
+    fetchLivePrices(TICKERS),
     ...TICKERS.map((t) => fetchWeeklyHistory(t)),
   ]);
 
@@ -214,7 +312,7 @@ router.get("/stocks/:ticker", async (req, res) => {
   }
 
   const [quotes, history] = await Promise.all([
-    fetchQuotes([def.ticker]),
+    fetchLivePrices([def.ticker]),
     fetchWeeklyHistory(def.ticker),
   ]);
 
