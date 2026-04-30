@@ -51,7 +51,12 @@ export const ListStocksResponseItem = zod.object({
   stopZone: zod.string(),
   status: zod.string(),
   volume: zod.string(),
-  priceTimestamp: zod.string().optional(),
+  priceTimestamp: zod
+    .date()
+    .optional()
+    .describe(
+      "ISO-8601 timestamp of when the price was last fetched from a live market data source. Absent when only static fallback data is available.",
+    ),
   chart: zod.array(
     zod.object({
       d: zod.string(),
@@ -92,7 +97,12 @@ export const GetStockResponse = zod.object({
   stopZone: zod.string(),
   status: zod.string(),
   volume: zod.string(),
-  priceTimestamp: zod.string().optional(),
+  priceTimestamp: zod
+    .date()
+    .optional()
+    .describe(
+      "ISO-8601 timestamp of when the price was last fetched from a live market data source. Absent when only static fallback data is available.",
+    ),
   chart: zod.array(
     zod.object({
       d: zod.string(),
@@ -100,6 +110,41 @@ export const GetStockResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * Returns recent news articles for the given ticker from live sources (Polygon.io when available, Yahoo Finance RSS as fallback).
+ * @summary Get live news for a stock
+ */
+export const GetStockNewsParams = zod.object({
+  ticker: zod.coerce.string(),
+});
+
+export const getStockNewsQueryLimitDefault = 10;
+
+export const GetStockNewsQueryParams = zod.object({
+  limit: zod.coerce
+    .number()
+    .default(getStockNewsQueryLimitDefault)
+    .describe("Maximum number of news items to return"),
+});
+
+export const GetStockNewsResponseItem = zod.object({
+  id: zod.string().describe("Unique identifier for the news article"),
+  title: zod.string(),
+  url: zod.string().url(),
+  source: zod.string().describe("Publisher name"),
+  summary: zod
+    .string()
+    .optional()
+    .describe("Brief summary or description of the article"),
+  publishedAt: zod.string().describe("ISO-8601 publication timestamp"),
+  imageUrl: zod
+    .string()
+    .url()
+    .optional()
+    .describe("Optional thumbnail image URL"),
+});
+export const GetStockNewsResponse = zod.array(GetStockNewsResponseItem);
 
 /**
  * @summary Get watchlist tickers

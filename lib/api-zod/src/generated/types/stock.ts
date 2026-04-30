@@ -31,5 +31,7 @@ export interface Stock {
   stopZone: string;
   status: string;
   volume: string;
+  /** ISO-8601 timestamp of when the price was last fetched from a live market data source. Absent when only static fallback data is available. */
+  priceTimestamp?: Date;
   chart: ChartPoint[];
 }

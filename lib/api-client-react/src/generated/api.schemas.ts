@@ -63,6 +63,21 @@ export interface Alert {
   createdAt: string;
 }
 
+export interface StockNewsItem {
+  /** Unique identifier for the news article */
+  id: string;
+  title: string;
+  url: string;
+  /** Publisher name */
+  source: string;
+  /** Brief summary or description of the article */
+  summary?: string;
+  /** ISO-8601 publication timestamp */
+  publishedAt: string;
+  /** Optional thumbnail image URL */
+  imageUrl?: string;
+}
+
 export interface ErrorResponse {
   error: string;
 }
@@ -123,6 +138,13 @@ export type ListStocksParams = {
    * Search query for ticker or company
    */
   q?: string;
+};
+
+export type GetStockNewsParams = {
+  /**
+   * Maximum number of news items to return
+   */
+  limit?: number;
 };
 
 export type BeginBrowserLoginParams = {

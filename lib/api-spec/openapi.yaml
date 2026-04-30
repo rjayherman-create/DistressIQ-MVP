@@ -79,6 +79,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /stocks/{ticker}/news:
+    get:
+      operationId: getStockNews
+      tags: [stocks]
+      summary: Get live news for a stock
+      description: Returns recent news articles for the given ticker from live sources (Polygon.io when available, Yahoo Finance RSS as fallback).
+      parameters:
+        - name: ticker
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+          description: Maximum number of news items to return
+      responses:
+        "200":
+          description: List of news articles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockNewsItem"
+        "404":
+          description: Stock not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /watchlist:
     get:
       operationId: getWatchlist
@@ -385,6 +419,36 @@ components:
         - ticker
         - severity
         - createdAt
+    StockNewsItem:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the news article
+        title:
+          type: string
+        url:
+          type: string
+          format: uri
+        source:
+          type: string
+          description: Publisher name
+        summary:
+          type: string
+          description: Brief summary or description of the article
+        publishedAt:
+          type: string
+          description: ISO-8601 publication timestamp
+        imageUrl:
+          type: string
+          format: uri
+          description: Optional thumbnail image URL
+      required:
+        - id
+        - title
+        - url
+        - source
+        - publishedAt
     ErrorResponse:
       type: object
       properties:
