@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { 
   Search, Bell, TrendingUp, TrendingDown, AlertTriangle, 
   Filter, BarChart3, Activity, DollarSign, ShieldAlert, 
-  Building2, Users, Briefcase, Newspaper, ExternalLink, Info
+  Building2, Users, Briefcase, Newspaper, ExternalLink, Info, Target
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
@@ -173,57 +173,96 @@ export function DistressIQDashboard() {
           transition={{ duration: 0.4, ease: "easeOut" }}
           className="mb-8"
         >
-          <div className="flex flex-col gap-5 rounded-[2rem] bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-200/60 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200/50">
-                  <Activity className="h-3.5 w-3.5" />
-                  DistressIQ MVP
-                </div>
-                <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ${isLiveData ? 'bg-emerald-50 text-emerald-700 ring-emerald-200/60' : 'bg-amber-50 text-amber-700 ring-amber-200/60'}`}>
-                  <span className="relative flex h-2 w-2">
-                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isLiveData ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-                    <span className={`relative inline-flex rounded-full h-2 w-2 ${isLiveData ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                  </span>
-                  {isLiveData ? 'Live data' : 'Demo data'}
-                </div>
-              </div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl font-display">
-                Pre-delisting opportunity intelligence
-              </h1>
-              <p className="mt-2.5 max-w-3xl text-sm leading-relaxed text-slate-500 md:text-base">
-                Rank sub-$2 distressed stocks by bounce probability, delisting risk, operator quality, business strength, and tradability.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex flex-col items-end rounded-xl bg-slate-50 px-4 py-2.5 ring-1 ring-slate-200/60 min-w-[140px]">
-                <span className="text-xl font-bold tabular-nums text-slate-900 leading-tight">{timeString}</span>
-                <span className="text-xs font-medium text-slate-500 mt-0.5">{dateString}</span>
-                <span className="text-[10px] font-semibold text-emerald-600 mt-1 uppercase tracking-wide">Real-time</span>
-              </div>
-              <Button className="rounded-xl px-6 bg-slate-900 hover:bg-slate-800 text-white shadow-md shadow-slate-900/10 transition-all active:scale-95">
-                Start Free Trial
-              </Button>
-              <div className="relative">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowAlerts(v => !v)}
-                  className="rounded-xl px-4 border-slate-200 text-slate-700 hover:bg-slate-50 transition-all active:scale-95 relative"
-                >
-                  <Bell className="h-4 w-4" />
-                  {alertCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 h-4.5 min-w-[18px] rounded-full bg-emerald-500 px-1 text-[9px] font-black text-white flex items-center justify-center shadow-sm">
-                      {alertCount}
+          <div className="rounded-[2rem] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-200/60 overflow-hidden">
+            {/* Top row: badges + title/subtitle | clock + bell */}
+            <div className="flex flex-col gap-5 p-6 md:flex-row md:items-start md:justify-between">
+              <div>
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200/50">
+                    <Activity className="h-3.5 w-3.5" />
+                    DistressIQ MVP
+                  </div>
+                  <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ${isLiveData ? 'bg-emerald-50 text-emerald-700 ring-emerald-200/60' : 'bg-amber-50 text-amber-700 ring-amber-200/60'}`}>
+                    <span className="relative flex h-2 w-2">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isLiveData ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${isLiveData ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                     </span>
-                  )}
-                </Button>
-                {showAlerts && (
-                  <SignalAlertsPanel
-                    onClose={() => setShowAlerts(false)}
-                    onGoToCycles={() => { setActiveTab('cycles'); setShowAlerts(false); }}
-                  />
-                )}
+                    {isLiveData ? 'Live data' : 'Demo data'}
+                  </div>
+                </div>
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl font-display">
+                  Pre-delisting opportunity intelligence
+                </h1>
+                <p className="mt-2.5 max-w-3xl text-sm leading-relaxed text-slate-500 md:text-base">
+                  Rank sub-$2 distressed stocks by bounce probability, delisting risk, operator quality, business strength, and tradability.
+                </p>
               </div>
+              <div className="flex items-start gap-3 shrink-0">
+                <div className="flex flex-col items-end rounded-xl bg-slate-50 px-4 py-2.5 ring-1 ring-slate-200/60 min-w-[140px]">
+                  <span className="text-xl font-bold tabular-nums text-slate-900 leading-tight">{timeString}</span>
+                  <span className="text-xs font-medium text-slate-500 mt-0.5">{dateString}</span>
+                  <span className="text-[10px] font-semibold text-emerald-600 mt-1 uppercase tracking-wide">Real-time</span>
+                </div>
+                <div className="relative mt-1">
+                  <button
+                    onClick={() => setShowAlerts(v => !v)}
+                    className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-all active:scale-95"
+                    aria-label="Open alerts"
+                  >
+                    <Bell className="h-4 w-4" />
+                    {alertCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-500 px-1 text-[9px] font-black text-white shadow-sm">
+                        {alertCount}
+                      </span>
+                    )}
+                  </button>
+                  {showAlerts && (
+                    <SignalAlertsPanel
+                      onClose={() => setShowAlerts(false)}
+                      onGoToCycles={() => { setActiveTab('cycles'); setShowAlerts(false); }}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Info cards: APP PURPOSE + IMPORTANT DISCLAIMER */}
+            <div className="grid gap-4 px-6 pb-5 md:grid-cols-2">
+              <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-blue-600 ring-1 ring-blue-200/60">
+                    <Target className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-widest text-blue-700">App Purpose</span>
+                </div>
+                <p className="text-sm leading-relaxed text-slate-600">
+                  DistressIQ identifies micro-cap stocks at risk of delisting or failure before the market fully reacts. Our goal is to provide early risk signals and data-driven insights to help users make informed research decisions.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-amber-600 ring-1 ring-amber-200/60">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-widest text-amber-700">Important Disclaimer</span>
+                </div>
+                <p className="text-sm leading-relaxed text-slate-600">
+                  This application provides data and analysis for informational and research purposes only. It does NOT provide investment advice or recommendations to buy or sell any securities. All data may be incomplete, delayed, or inaccurate. Use at your own risk.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer disclaimer strip */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 bg-slate-50/70 px-6 py-3 text-[11px] font-medium text-slate-500">
+              <span className="flex items-center gap-1.5 font-semibold text-slate-700">
+                <ShieldAlert className="h-3.5 w-3.5 text-slate-500" />
+                NOT INVESTMENT ADVICE.
+              </span>
+              <span>Past performance is not indicative of future results.</span>
+              <span className="hidden md:inline text-slate-300">|</span>
+              <span>Risk of total loss is possible.</span>
+              <span className="hidden md:inline text-slate-300">|</span>
+              <span>Always do your own research.</span>
             </div>
           </div>
         </motion.div>
