@@ -12,6 +12,7 @@ interface ServiceCheck {
   error?: string;
 }
 
+
 /**
  * GET /api/diagnostics
  *
@@ -70,9 +71,8 @@ async function checkPolygon(): Promise<ServiceCheck> {
   if (!apiKey) return check;
 
   try {
-    const url =
-      `https://api.polygon.io/v2/aggs/ticker/TELA/prev` +
-      `?adjusted=true&apiKey=${apiKey}`;
+    const params = new URLSearchParams({ adjusted: "true", apiKey });
+    const url = `https://api.polygon.io/v2/aggs/ticker/TELA/prev?${params}`;
     const res = await fetch(url, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
@@ -104,9 +104,8 @@ async function checkAlphaVantage(): Promise<ServiceCheck> {
   if (!apiKey) return check;
 
   try {
-    const url =
-      `https://www.alphavantage.co/query?function=GLOBAL_QUOTE` +
-      `&symbol=TELA&apikey=${apiKey}`;
+    const params = new URLSearchParams({ function: "GLOBAL_QUOTE", symbol: "TELA", apikey: apiKey });
+    const url = `https://www.alphavantage.co/query?${params}`;
     const res = await fetch(url, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
