@@ -10,18 +10,13 @@ import {
   useAddToWatchlist,
   useRemoveFromWatchlist
 } from "@workspace/api-client-react";
-import { mockStockData, mockAlerts, mockWatchlist } from "@/lib/mock-data";
 import { cyclicStocks, applyRealPrices, type CyclicStock } from "@/lib/cycle-data";
+import type { Period } from "@/lib/history-data";
 
 export function useDashboardStocks(params?: { q?: string; status?: string }) {
   const query = useListStocks(params, { query: { queryKey: getListStocksQueryKey(params), retry: false, staleTime: 60000 } });
   
-  // Robust fallback pattern
-  const stocks = query.data ?? mockStockData.filter(s => {
-    const matchQuery = !params?.q || `${s.ticker} ${s.company} ${s.industry}`.toLowerCase().includes(params.q.toLowerCase());
-    const matchStatus = !params?.status || params.status === 'all' || s.status === params.status;
-    return matchQuery && matchStatus;
-  }).sort((a, b) => b.bounceProbability - a.bounceProbability);
+  const stocks = query.data ?? [];
 
   // Enrich with live prices from /api/prices
   const tickers = stocks.map((s) => s.ticker).join(",");
@@ -51,7 +46,32 @@ export function useDashboardStocks(params?: { q?: string; status?: string }) {
 
 export function useDashboardAlerts() {
   const query = useListAlerts({ query: { queryKey: getListAlertsQueryKey(), retry: false, staleTime: 60000 } });
-  return { ...query, data: query.data ?? mockAlerts, isLiveData: query.data != null };
+  return { ...query, data: query.data ?? [], isLiveData: query.data != null };
+}
+
+/**
+ * Fetches live price history for a given ticker and UI period.
+ * Falls back to an empty array when the API is unavailable.
+ */
+export function useStockHistory(ticker: string | undefined, period: Period) {
+  const staleTimes: Record<Period, number> = {
+    "1W": 5 * 60_000,
+    "1M": 30 * 60_000,
+    "3M": 2 * 60 * 60_000,
+    "6M": 4 * 60 * 60_000,
+    "1Y": 6 * 60 * 60_000,
+  };
+  return useQuery<{ d: string; p: number }[]>({
+    queryKey: ["stock-history", ticker, period],
+    queryFn: async () => {
+      const res = await fetch(`/api/stocks/${ticker}/history?period=${period}`);
+      if (!res.ok) throw new Error(`history fetch failed: ${res.status} ${res.statusText}`);
+      return res.json();
+    },
+    staleTime: staleTimes[period] ?? 60_000,
+    retry: false,
+    enabled: !!ticker,
+  });
 }
 
 /**
@@ -81,7 +101,7 @@ export function useCyclicStocks(): CyclicStock[] {
 export function useLocalWatchlist() {
   const [watchlist, setWatchlist] = useState<string[]>(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('distressiq-watchlist') : null;
-    return saved ? JSON.parse(saved) : mockWatchlist;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const apiQuery = useGetWatchlist({ query: { queryKey: getGetWatchlistQueryKey(), retry: false, staleTime: 60000 } });

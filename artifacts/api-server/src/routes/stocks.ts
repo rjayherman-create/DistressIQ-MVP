@@ -3,7 +3,7 @@ import {
   ListStocksResponse,
   GetStockResponse,
 } from "@workspace/api-zod";
-import { fetchQuotes, fetchWeeklyHistory } from "../lib/yahoo-finance";
+import { fetchQuotes, fetchWeeklyHistory, fetchHistory, VALID_PERIODS } from "../lib/yahoo-finance";
 
 const router: IRouter = Router();
 
@@ -229,6 +229,25 @@ router.get("/stocks/:ticker", async (req, res) => {
 
   const parsed = GetStockResponse.parse(stock);
   res.json(parsed);
+});
+
+router.get("/stocks/:ticker/history", async (req, res) => {
+  const { ticker } = req.params;
+  const { period = "3M" } = req.query as { period?: string };
+
+  if (!VALID_PERIODS.has(period)) {
+    res.status(400).json({ error: `Invalid period. Must be one of: ${[...VALID_PERIODS].join(", ")}` });
+    return;
+  }
+
+  const data = await fetchHistory(ticker.toUpperCase(), period);
+
+  if (!data || data.length === 0) {
+    res.status(404).json({ error: "No history available for this ticker" });
+    return;
+  }
+
+  res.json(data);
 });
 
 export default router;

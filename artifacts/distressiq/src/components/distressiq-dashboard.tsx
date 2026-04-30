@@ -15,13 +15,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-import { useDashboardStocks, useDashboardAlerts, useLocalWatchlist } from '@/hooks/use-distressiq';
+import { useDashboardStocks, useDashboardAlerts, useLocalWatchlist, useStockHistory } from '@/hooks/use-distressiq';
 import { statusPill } from '@/lib/scoring';
 import { ScoreCard } from './score-card';
 import { PeerComparison } from './peer-comparison';
 import { CycleScanner } from './cycle-scanner';
 import { SignalAlertsPanel, useAlertCount } from './signal-alerts-panel';
-import { historicalData, stockEvents, eventTypeConfig, PERIODS, periodDescriptions, type Period } from '@/lib/history-data';
+import { stockEvents, eventTypeConfig, PERIODS, periodDescriptions, type Period } from '@/lib/history-data';
 import type { Stock } from '@workspace/api-client-react';
 
 export function DistressIQDashboard() {
@@ -64,6 +64,9 @@ export function DistressIQDashboard() {
   const selected = useMemo(() => {
     return stocks.find(s => s.ticker === selectedTicker) || stocks[0];
   }, [stocks, selectedTicker]);
+
+  // Live historical chart data for the selected stock and current period
+  const { data: liveHistory } = useStockHistory(selected?.ticker, chartPeriod);
 
   const topSetups = stocks.slice(0, 3);
 
@@ -500,7 +503,7 @@ export function DistressIQDashboard() {
                       <div className="mt-4 h-[320px] rounded-2xl bg-white border border-slate-100 shadow-inner shadow-slate-100/50 p-4">
                         <ResponsiveContainer width="100%" height="100%">
                           <AreaChart
-                            data={historicalData[selected.ticker]?.[chartPeriod] ?? selected.chart}
+                            data={liveHistory ?? selected.chart}
                             margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                           >
                             <defs>
