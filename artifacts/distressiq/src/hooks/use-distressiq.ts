@@ -19,7 +19,7 @@ import { cyclicStocks, applyRealPrices, type CyclicStock } from "@/lib/cycle-dat
 export { type StockNewsItem };
 
 export function useDashboardStocks(params?: { q?: string; status?: string }) {
-  const query = useListStocks(params, { query: { queryKey: getListStocksQueryKey(params), retry: false, staleTime: 60000 } });
+  const query = useListStocks(params, { query: { queryKey: getListStocksQueryKey(params), retry: 2, staleTime: 60000, refetchInterval: 60_000 } });
   
   // Robust fallback pattern — only use mock data once the query has settled
   // (isLoading false).  During the initial fetch we still show mock data so
@@ -40,7 +40,8 @@ export function useDashboardStocks(params?: { q?: string; status?: string }) {
       return res.json();
     },
     staleTime: 60_000,
-    retry: false,
+    refetchInterval: 60_000,
+    retry: 2,
     enabled: tickers.length > 0,
   });
 
@@ -60,7 +61,7 @@ export function useDashboardStocks(params?: { q?: string; status?: string }) {
 }
 
 export function useDashboardAlerts() {
-  const query = useListAlerts({ query: { queryKey: getListAlertsQueryKey(), retry: false, staleTime: 60000 } });
+  const query = useListAlerts({ query: { queryKey: getListAlertsQueryKey(), retry: 2, staleTime: 60000, refetchInterval: 60_000 } });
   return { ...query, data: query.data ?? mockAlerts, isLiveData: query.data != null };
 }
 
@@ -80,7 +81,8 @@ export function useCyclicStocks(): CyclicStock[] {
       return res.json();
     },
     staleTime: 60_000,
-    retry: false,
+    refetchInterval: 60_000,
+    retry: 2,
   });
 
   if (!priceMap) return cyclicStocks;
@@ -94,7 +96,7 @@ export function useLocalWatchlist() {
     return saved ? JSON.parse(saved) : mockWatchlist;
   });
 
-  const apiQuery = useGetWatchlist({ query: { queryKey: getGetWatchlistQueryKey(), retry: false, staleTime: 60000 } });
+  const apiQuery = useGetWatchlist({ query: { queryKey: getGetWatchlistQueryKey(), retry: 2, staleTime: 60000, refetchInterval: 60_000 } });
   const addMutation = useAddToWatchlist();
   const removeMutation = useRemoveFromWatchlist();
 
