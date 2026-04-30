@@ -1,13 +1,26 @@
+import yahooFinance from "yahoo-finance2";
 import { logger } from "./logger";
+
+// Minimal types extracted from yahoo-finance2 for our usage
+interface YFQuote {
+  symbol: string;
+  regularMarketPrice?: number;
+  regularMarketVolume?: number;
+  [key: string]: unknown;
+}
+
+interface YFChartQuote {
+  date: Date | string | number;
+  close: number | null;
+  [key: string]: unknown;
+}
+
+interface YFChartResult {
+  quotes: YFChartQuote[];
+}
 
 const CACHE_TTL_MS = 60_000; // 60 seconds for prices
 const HISTORY_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours for historical data
-
-const FETCH_HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  Accept: "application/json",
-};
 
 // ---------------------------------------------------------------------------
 // Price cache
@@ -28,7 +41,7 @@ function formatVolume(vol: number): string {
 }
 
 /**
- * Fetch current price and volume for a list of tickers in a single request.
+ * Fetch current price and volume for a list of tickers using yahoo-finance2.
  * Results are cached per-ticker for CACHE_TTL_MS.
  */
 export async function fetchQuotes(
@@ -50,23 +63,9 @@ export async function fetchQuotes(
   if (stale.length === 0) return result;
 
   try {
-    const symbols = stale.join(",");
-    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice,regularMarketVolume`;
-    const res = await fetch(url, { headers: FETCH_HEADERS, signal: AbortSignal.timeout(5000) });
-
-    if (!res.ok) throw new Error(`Yahoo Finance quotes HTTP ${res.status} ${res.statusText}`);
-
-    const json = (await res.json()) as {
-      quoteResponse?: {
-        result?: Array<{
-          symbol: string;
-          regularMarketPrice?: number;
-          regularMarketVolume?: number;
-        }>;
-      };
-    };
-
-    const items = json?.quoteResponse?.result ?? [];
+    const items = (await yahooFinance.quote(stale, {
+      fields: ["regularMarketPrice", "regularMarketVolume"],
+    })) as YFQuote[];
     for (const item of items) {
       if (item.regularMarketPrice != null) {
         const entry: PriceEntry = {
@@ -79,11 +78,7 @@ export async function fetchQuotes(
       }
     }
   } catch (err) {
-    const isTimeout = err instanceof Error && err.name === "TimeoutError";
-    logger.warn({ err, timeout: isTimeout }, isTimeout
-      ? "Yahoo Finance quote fetch timed out — using cached/static values"
-      : "Yahoo Finance quote fetch failed — using cached/static values"
-    );
+    logger.warn({ err }, "Yahoo Finance quote fetch failed — using cached/static values");
   }
 
   return result;
@@ -102,16 +97,13 @@ interface HistoryEntry {
 
 const historyCache = new Map<string, HistoryEntry>();
 
-function formatWeekLabel(timestamp: number): string {
-  const date = new Date(timestamp * 1000);
+function formatWeekLabel(date: Date): string {
   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const month = months[date.getUTCMonth()];
-  const day = date.getUTCDate();
-  return `${month} ${day}`;
+  return `${months[date.getUTCMonth()]} ${date.getUTCDate()}`;
 }
 
 /**
- * Fetch 8 weeks of weekly price history for a ticker.
+ * Fetch 8 weeks of weekly price history for a ticker using yahoo-finance2.
  * Results are cached per-ticker for HISTORY_CACHE_TTL_MS.
  */
 export async function fetchWeeklyHistory(ticker: string): Promise<ChartPoint[] | null> {
@@ -122,29 +114,21 @@ export async function fetchWeeklyHistory(ticker: string): Promise<ChartPoint[] |
   }
 
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1wk&range=2mo`;
-    const res = await fetch(url, { headers: FETCH_HEADERS, signal: AbortSignal.timeout(5000) });
-
-    if (!res.ok) throw new Error(`Yahoo Finance history HTTP ${res.status} ${res.statusText}`);
-
-    const json = (await res.json()) as {
-      chart?: {
-        result?: Array<{
-          timestamp?: number[];
-          indicators?: { quote?: Array<{ close?: (number | null)[] }> };
-        }>;
-      };
-    };
-
-    const result = json?.chart?.result?.[0];
-    const timestamps = result?.timestamp ?? [];
-    const closes = result?.indicators?.quote?.[0]?.close ?? [];
+    const twoMonthsAgo = new Date(now - 60 * 24 * 60 * 60 * 1000);
+    const historical = (await yahooFinance.chart(ticker, {
+      interval: "1wk",
+      period1: twoMonthsAgo,
+      return: "array",
+    })) as YFChartResult;
 
     const points: ChartPoint[] = [];
-    for (let i = 0; i < timestamps.length; i++) {
-      const price = closes[i];
-      if (price != null && isFinite(price)) {
-        points.push({ d: formatWeekLabel(timestamps[i]), p: parseFloat(price.toFixed(4)) });
+    for (const q of historical.quotes) {
+      const price = q.close;
+      if (price != null && isFinite(price) && q.date) {
+        points.push({
+          d: formatWeekLabel(new Date(q.date)),
+          p: parseFloat(price.toFixed(4)),
+        });
       }
     }
 
@@ -153,11 +137,7 @@ export async function fetchWeeklyHistory(ticker: string): Promise<ChartPoint[] |
       return points;
     }
   } catch (err) {
-    const isTimeout = err instanceof Error && err.name === "TimeoutError";
-    logger.warn({ err, ticker, timeout: isTimeout }, isTimeout
-      ? `Yahoo Finance history fetch timed out for ${ticker} — keeping static chart`
-      : `Yahoo Finance history fetch failed for ${ticker} — keeping static chart`
-    );
+    logger.warn({ err, ticker }, `Yahoo Finance history fetch failed for ${ticker} — keeping static chart`);
   }
 
   return null;
