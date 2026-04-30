@@ -1,9 +1,9 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Search, Bell, TrendingUp, TrendingDown, AlertTriangle, 
   Filter, BarChart3, Activity, DollarSign, ShieldAlert, 
-  Building2, Users, Briefcase 
+  Building2, Users, Briefcase, Info
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 import { useDashboardStocks, useDashboardAlerts, useLocalWatchlist } from '@/hooks/use-distressiq';
 import { statusPill } from '@/lib/scoring';
@@ -23,6 +24,36 @@ import { CycleScanner } from './cycle-scanner';
 import { SignalAlertsPanel, useAlertCount } from './signal-alerts-panel';
 import { historicalData, stockEvents, eventTypeConfig, PERIODS, periodDescriptions, type Period } from '@/lib/history-data';
 import type { Stock } from '@workspace/api-client-react';
+
+// ---------------------------------------------------------------------------
+// Stat trend tracking — persists a snapshot to localStorage so the UI can
+// show how today's counts compare to the previous session.
+// ---------------------------------------------------------------------------
+
+const SNAPSHOT_KEY = 'distressiq-stat-snapshot';
+
+interface StatSnapshot {
+  activeSetups: number;
+  highQuality: number;
+  highRisk: number;
+  triggeredAlerts: number;
+  savedAt: string; // ISO date string
+}
+
+function loadSnapshot(): StatSnapshot | null {
+  try {
+    const raw = localStorage.getItem(SNAPSHOT_KEY);
+    return raw ? (JSON.parse(raw) as StatSnapshot) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSnapshot(snap: StatSnapshot): void {
+  try {
+    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snap));
+  } catch { /* storage unavailable */ }
+}
 
 export function DistressIQDashboard() {
   const [query, setQuery] = useState('');
@@ -57,8 +88,38 @@ export function DistressIQDashboard() {
 
   const { data: stocks = [], isLiveData: stocksLive } = useDashboardStocks({ q: query, status: statusFilter });
   const { data: alerts = [], isLiveData: alertsLive } = useDashboardAlerts();
-  const isLiveData = stocksLive || alertsLive;
+  // isLiveData reflects only the stock scanner feed so the badge accurately
+  // shows whether scored stock data (not just the static alerts list) is live.
+  const isLiveData = stocksLive;
   const { watchlist, toggleWatchlist } = useLocalWatchlist();
+
+  // ---------------------------------------------------------------------------
+  // Stat counts & trend tracking
+  // ---------------------------------------------------------------------------
+  const activeSetups = stocks.length;
+  const highQuality = stocks.filter(s => s.bounceProbability >= 65).length;
+  const highRisk = stocks.filter(s => s.delistingRisk >= 60).length;
+  const triggeredAlerts = alerts.length;
+
+  // Load the previous-session snapshot once on mount so the delta is stable.
+  const prevSnapshotRef = useRef<StatSnapshot | null>(null);
+  useEffect(() => {
+    prevSnapshotRef.current = loadSnapshot();
+  }, []);
+
+  // Persist the current counts whenever the data changes.
+  useEffect(() => {
+    if (stocks.length === 0 && alerts.length === 0) return;
+    saveSnapshot({
+      activeSetups,
+      highQuality,
+      highRisk,
+      triggeredAlerts,
+      savedAt: new Date().toISOString(),
+    });
+  }, [activeSetups, highQuality, highRisk, triggeredAlerts]);
+
+  const prev = prevSnapshotRef.current;
 
   // Safely get selected stock or fallback to first
   const selected = useMemo(() => {
@@ -167,50 +228,98 @@ export function DistressIQDashboard() {
 
         {/* Stats Row */}
         <div className="mb-8 grid gap-4 md:grid-cols-4">
-          <Card className="rounded-[1.5rem] shadow-sm border-slate-200/60 hover:shadow-md transition-shadow">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Active setups</p>
-                  <p className="mt-1.5 text-3xl font-bold text-slate-900">{stocks.length}</p>
-                </div>
-                <div className="rounded-2xl bg-blue-50 p-3 ring-1 ring-blue-100"><BarChart3 className="h-5 w-5 text-blue-600" /></div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="rounded-[1.5rem] shadow-sm border-slate-200/60 hover:shadow-md transition-shadow">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-500">High-quality today</p>
-                  <p className="mt-1.5 text-3xl font-bold text-slate-900">{stocks.filter(s => s.bounceProbability >= 65).length}</p>
-                </div>
-                <div className="rounded-2xl bg-emerald-50 p-3 ring-1 ring-emerald-100"><TrendingUp className="h-5 w-5 text-emerald-600" /></div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="rounded-[1.5rem] shadow-sm border-slate-200/60 hover:shadow-md transition-shadow">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-500">High risk names</p>
-                  <p className="mt-1.5 text-3xl font-bold text-slate-900">{stocks.filter(s => s.delistingRisk >= 60).length}</p>
-                </div>
-                <div className="rounded-2xl bg-rose-50 p-3 ring-1 ring-rose-100"><ShieldAlert className="h-5 w-5 text-rose-600" /></div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="rounded-[1.5rem] shadow-sm border-slate-200/60 hover:shadow-md transition-shadow">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Triggered alerts</p>
-                  <p className="mt-1.5 text-3xl font-bold text-slate-900">{alerts.length}</p>
-                </div>
-                <div className="rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-100"><Bell className="h-5 w-5 text-amber-600" /></div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Card helper — renders value, optional delta badge, icon, and a tooltip */}
+          {([
+            {
+              label: 'Active setups',
+              value: activeSetups,
+              prevValue: prev?.activeSetups ?? null,
+              icon: <BarChart3 className="h-5 w-5 text-blue-600" />,
+              iconBg: 'bg-blue-50 ring-blue-100',
+              tooltip: 'Total sub-$2 stocks currently tracked by DistressIQ that are under active NASDAQ compliance pressure. Each one has been scored for bounce probability and delisting risk.',
+              deltaPositiveIsGood: true,
+            },
+            {
+              label: 'High-quality today',
+              value: highQuality,
+              prevValue: prev?.highQuality ?? null,
+              icon: <TrendingUp className="h-5 w-5 text-emerald-600" />,
+              iconBg: 'bg-emerald-50 ring-emerald-100',
+              tooltip: 'Stocks whose bounce probability score is ≥ 65 — meaning the score engine considers them the strongest recovery candidates right now based on price positioning, compliance timeline, and recent price momentum.',
+              deltaPositiveIsGood: true,
+            },
+            {
+              label: 'High risk names',
+              value: highRisk,
+              prevValue: prev?.highRisk ?? null,
+              icon: <ShieldAlert className="h-5 w-5 text-rose-600" />,
+              iconBg: 'bg-rose-50 ring-rose-100',
+              tooltip: 'Stocks whose delisting risk score is ≥ 60 — names approaching or past compliance deadlines with weak financials and limited runway. These are high-risk/high-volatility setups that require tighter risk management.',
+              deltaPositiveIsGood: false,
+            },
+            {
+              label: 'Triggered alerts',
+              value: triggeredAlerts,
+              prevValue: prev?.triggeredAlerts ?? null,
+              icon: <Bell className="h-5 w-5 text-amber-600" />,
+              iconBg: 'bg-amber-50 ring-amber-100',
+              tooltip: 'Real-time alerts fired based on live price conditions: stocks near $1 compliance threshold, price entering entry zones, prices breaching stop levels, and deadline urgency warnings.',
+              deltaPositiveIsGood: false,
+            },
+          ] satisfies Array<{
+            label: string;
+            value: number;
+            prevValue: number | null;
+            icon: React.ReactNode;
+            iconBg: string;
+            tooltip: string;
+            deltaPositiveIsGood: boolean;
+          }>).map(({ label, value, prevValue, icon, iconBg, tooltip, deltaPositiveIsGood }) => {
+            const delta = prevValue !== null ? value - prevValue : null;
+            const showDelta = delta !== null && delta !== 0;
+            const deltaUp = delta !== null && delta > 0;
+            const isPositive = deltaUp === deltaPositiveIsGood;
+            return (
+              <Card key={label} className="rounded-[1.5rem] shadow-sm border-slate-200/60 hover:shadow-md transition-shadow">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-medium text-slate-500 truncate">{label}</p>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button className="shrink-0 text-slate-300 hover:text-slate-500 transition-colors focus:outline-none" aria-label={`About ${label}`}>
+                              <Info className="h-3.5 w-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[260px] text-center leading-relaxed whitespace-normal">
+                            {tooltip}
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <div className="mt-1.5 flex items-end gap-2">
+                        <p className="text-3xl font-bold text-slate-900 tabular-nums leading-none">{value}</p>
+                        {showDelta && (
+                          <span className={`mb-0.5 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                            isPositive
+                              ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60'
+                              : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200/60'
+                          }`}>
+                            {deltaUp ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
+                            {deltaUp ? '+' : ''}{delta}
+                          </span>
+                        )}
+                      </div>
+                      {prevValue !== null && (
+                        <p className="mt-1 text-[10px] text-slate-400">vs {prevValue} last session</p>
+                      )}
+                    </div>
+                    <div className={`rounded-2xl p-3 ring-1 shrink-0 ${iconBg}`}>{icon}</div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {/* Real-time refresh indicator */}
