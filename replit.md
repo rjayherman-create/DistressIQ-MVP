@@ -75,8 +75,10 @@ Routes added:
 
 | Variable | Required | Description |
 |---|---|---|
-| `PORT` | ✅ | Server port (set to `8080` by Replit in production) |
+| `PORT` | Optional | Server port. Defaults to `8080` when not set. Replit sets this to `8080` automatically in production. |
 | `DATABASE_URL` | ✅ | PostgreSQL connection string |
+| `OIDC_CLIENT_ID` | Optional (enables OIDC login) | Generic OIDC client ID for non-Replit deployments. On Replit, `REPL_ID` is used automatically as the fallback. |
+| `ISSUER_URL` | Optional | OIDC issuer URL. Defaults to `https://replit.com/oidc`. Override for non-Replit OIDC providers. |
 | `POLYGON_API_KEY` | Optional (enables dual-source price verification) | Polygon.io API key — free tier works |
 | `ALPHA_VANTAGE_KEY` | Optional (enables dual-source price verification alongside Polygon) | Alpha Vantage API key — free tier works |
 

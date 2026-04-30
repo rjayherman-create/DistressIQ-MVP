@@ -6,6 +6,18 @@ import { eq } from "drizzle-orm";
 import type { AuthUser } from "@workspace/api-zod";
 
 export const ISSUER_URL = process.env.ISSUER_URL ?? "https://replit.com/oidc";
+
+// OIDC_CLIENT_ID is the generic env var for non-Replit deployments.
+// Falls back to REPL_ID for Replit compatibility.
+export function getOidcClientId(): string {
+  const id = process.env.OIDC_CLIENT_ID ?? process.env.REPL_ID;
+  if (!id) {
+    throw new Error(
+      "OIDC authentication is not configured. Set OIDC_CLIENT_ID (or REPL_ID on Replit).",
+    );
+  }
+  return id;
+}
 export const SESSION_COOKIE = "sid";
 export const SESSION_TTL = 7 * 24 * 60 * 60 * 1000;
 
@@ -22,7 +34,7 @@ export async function getOidcConfig(): Promise<client.Configuration> {
   if (!oidcConfig) {
     oidcConfig = await client.discovery(
       new URL(ISSUER_URL),
-      process.env.REPL_ID!,
+      getOidcClientId(),
     );
   }
   return oidcConfig;
