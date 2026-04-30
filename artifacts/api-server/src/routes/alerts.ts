@@ -5,6 +5,10 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
+const COMPLIANCE_WARNING_THRESHOLD = 0.06; // alert when within 6% below $1.00
+const CRITICAL_DELISTING_RISK_THRESHOLD = 70;
+const HIGH_BOUNCE_PROBABILITY_THRESHOLD = 65;
+
 // Minimal definitions needed for alert generation.
 // Analyst-assigned scores drive message content; live prices drive severity.
 const alertDefs = [
@@ -54,7 +58,7 @@ router.get("/alerts", async (_req, res) => {
           severity: "info",
           createdAt: now,
         });
-      } else if (distanceTo1 <= 0.06) {
+      } else if (distanceTo1 <= COMPLIANCE_WARNING_THRESHOLD) {
         // Within 6% below the $1 compliance line
         const pct = (distanceTo1 * 100).toFixed(1);
         alerts.push({
@@ -68,7 +72,7 @@ router.get("/alerts", async (_req, res) => {
     }
 
     // Score-based alerts
-    if (def.delistingRisk >= 70) {
+    if (def.delistingRisk >= CRITICAL_DELISTING_RISK_THRESHOLD) {
       alerts.push({
         id: String(id++),
         ticker: def.ticker,
@@ -78,7 +82,7 @@ router.get("/alerts", async (_req, res) => {
       });
     }
 
-    if (def.bounceProbability >= 65) {
+    if (def.bounceProbability >= HIGH_BOUNCE_PROBABILITY_THRESHOLD) {
       alerts.push({
         id: String(id++),
         ticker: def.ticker,

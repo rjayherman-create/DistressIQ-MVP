@@ -26,7 +26,7 @@ export const stockEvents: Record<string, Record<Period, StockEvent[]>> = {
     '3M': [
       { d: 'W4', message: 'Price crossed below $1 compliance threshold', type: 'compliance' },
       { d: 'W8', message: 'Volume spike 1.8× average — possible accumulation', type: 'volume' },
-      { d: 'W11', message: 'Support band established near $0.79', type: 'price' },
+      { d: 'W11', message: 'Support band near $0.79 holds for second week', type: 'price' },
     ],
     '1M': [
       { d: 'Mar 6', message: 'Volume 1.7× average — buying interest near $0.82', type: 'volume' },
