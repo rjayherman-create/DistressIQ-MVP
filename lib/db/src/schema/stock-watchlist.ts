@@ -6,7 +6,7 @@ export const stockWatchlistTable = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     userId: text("user_id").notNull(),
     symbol: text("symbol").notNull(),
-    createdAt: timestamp("created_at").defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [unique("stock_watchlist_user_symbol_unique").on(table.userId, table.symbol)],
 );
