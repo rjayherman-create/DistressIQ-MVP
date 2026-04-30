@@ -143,7 +143,8 @@ export function computeAdjustedScores(
     }
 
     // Price falling for 2+ consecutive weeks: negative signal.
-    if (isFalling) {      bounceProbability -= 4;
+    if (isFalling) {
+      bounceProbability -= 4;
       patternScore -= 4;
       delistingRisk += 3;
     }
