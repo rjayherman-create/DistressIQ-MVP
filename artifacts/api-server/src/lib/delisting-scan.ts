@@ -97,10 +97,10 @@ export async function runDelistingScan(force = false): Promise<ScanSummary> {
   const atRisk: TickerScanResult[] = [];
 
   // Pre-fetch Polygon batch prices/volumes for all tickers in one request.
-  let polygonBatch: Map<string, { price: number; volume?: number }> = new Map();
+  let tickerSnapshots: Map<string, { price: number; volume?: number }> = new Map();
   if (process.env.POLYGON_API_KEY) {
     try {
-      polygonBatch = await fetchPolygonBatch(tickers);
+      tickerSnapshots = await fetchPolygonBatch(tickers);
     } catch (err) {
       logger.warn({ err }, "delisting-scan: Polygon batch fetch failed — continuing without batch data");
     }
@@ -108,7 +108,7 @@ export async function runDelistingScan(force = false): Promise<ScanSummary> {
 
   for (const ticker of tickers) {
     try {
-      const result = await scoreTicker(ticker, polygonBatch);
+      const result = await scoreTicker(ticker, tickerSnapshots);
       if (result.score >= RISK_THRESHOLD) {
         atRisk.push(result);
       }
@@ -143,7 +143,7 @@ export async function runDelistingScan(force = false): Promise<ScanSummary> {
 
 async function scoreTicker(
   ticker: string,
-  polygonBatch: Map<string, { price: number; volume?: number }>,
+  tickerSnapshots: Map<string, { price: number; volume?: number }>,
 ): Promise<TickerScanResult> {
   let score = 0;
   const flags: string[] = [];
@@ -161,7 +161,7 @@ async function scoreTicker(
   }
 
   // 3. Low Volume (from Polygon batch snapshot)
-  if (checkLowVolume(ticker, polygonBatch)) {
+  if (checkLowVolume(ticker, tickerSnapshots)) {
     score += 10;
     flags.push("Low Volume");
   }
@@ -317,20 +317,24 @@ async function checkPriceDrop(ticker: string): Promise<boolean> {
  */
 function checkLowVolume(
   ticker: string,
-  polygonBatch: Map<string, { price: number; volume?: number }>,
+  tickerSnapshots: Map<string, { price: number; volume?: number }>,
 ): boolean {
-  const entry = polygonBatch.get(ticker.toUpperCase());
+  const entry = tickerSnapshots.get(ticker.toUpperCase());
   if (!entry || entry.volume == null) return false;
   return entry.volume < 100_000;
 }
 
 /**
- * OTC tier check — returns true for tickers known to be on OTC warning tiers.
+ * Tickers known to be on OTC warning tiers.
  * Replace with a live OTC Markets API call or a regularly refreshed dataset.
  */
+const OTC_WARNING_TICKERS = new Set(["BBBYQ", "MULN", "GOEV", "IDEX", "SOPA", "GFAI"]);
+
+/**
+ * OTC tier check — returns true for tickers known to be on OTC warning tiers.
+ */
 function checkOTCRisk(ticker: string): boolean {
-  const otcWarningTickers = new Set(["BBBYQ", "MULN", "GOEV", "IDEX", "SOPA", "GFAI"]);
-  return otcWarningTickers.has(ticker.toUpperCase());
+  return OTC_WARNING_TICKERS.has(ticker.toUpperCase());
 }
 
 /**
