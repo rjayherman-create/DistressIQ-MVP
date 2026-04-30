@@ -10,6 +10,31 @@ const FETCH_HEADERS = {
 };
 
 // ---------------------------------------------------------------------------
+// Period-based history config
+// ---------------------------------------------------------------------------
+
+export const VALID_PERIODS = ["1W", "1M", "3M", "6M", "1Y"] as const;
+export type ValidPeriod = (typeof VALID_PERIODS)[number];
+
+/** Yahoo Finance interval + range params for each UI period. */
+const PERIOD_PARAMS: Record<ValidPeriod, { interval: string; range: string }> = {
+  "1W": { interval: "1d",  range: "5d"  },
+  "1M": { interval: "1d",  range: "1mo" },
+  "3M": { interval: "1wk", range: "3mo" },
+  "6M": { interval: "1wk", range: "6mo" },
+  "1Y": { interval: "1mo", range: "1y"  },
+};
+
+/** Cache TTL per period — shorter periods refresh more often. */
+const PERIOD_CACHE_TTL_MS: Record<ValidPeriod, number> = {
+  "1W": 5  * 60 * 1000,        // 5 minutes
+  "1M": 30 * 60 * 1000,        // 30 minutes
+  "3M": 6  * 60 * 60 * 1000,   // 6 hours
+  "6M": 6  * 60 * 60 * 1000,   // 6 hours
+  "1Y": 24 * 60 * 60 * 1000,   // 24 hours
+};
+
+// ---------------------------------------------------------------------------
 // Price cache
 // ---------------------------------------------------------------------------
 
@@ -157,6 +182,87 @@ export async function fetchWeeklyHistory(ticker: string): Promise<ChartPoint[] |
     logger.warn({ err, ticker, timeout: isTimeout }, isTimeout
       ? `Yahoo Finance history fetch timed out for ${ticker} — keeping static chart`
       : `Yahoo Finance history fetch failed for ${ticker} — keeping static chart`
+    );
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Period-based history cache (keyed by "TICKER:PERIOD")
+// ---------------------------------------------------------------------------
+
+const periodHistoryCache = new Map<string, HistoryEntry>();
+
+function formatPeriodLabel(timestamp: number, period: ValidPeriod): string {
+  const date = new Date(timestamp * 1000);
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const month = months[date.getUTCMonth()];
+  const day = date.getUTCDate();
+  if (period === "1Y") return month;
+  if (period === "1W" || period === "1M") return `${month} ${day}`;
+  return `${month} ${day}`;
+}
+
+/**
+ * Fetch price history for a ticker over a given UI period.
+ * Uses period-specific Yahoo Finance interval/range params and TTLs.
+ * Results are cached per ticker+period.
+ */
+export async function fetchHistory(
+  ticker: string,
+  period: ValidPeriod,
+): Promise<ChartPoint[] | null> {
+  const cacheKey = `${ticker}:${period}`;
+  const now = Date.now();
+  const cached = periodHistoryCache.get(cacheKey);
+  const ttl = PERIOD_CACHE_TTL_MS[period];
+
+  if (cached && now - cached.fetchedAt < ttl) {
+    return cached.data;
+  }
+
+  const { interval, range } = PERIOD_PARAMS[period];
+
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${interval}&range=${range}`;
+    const res = await fetch(url, { headers: FETCH_HEADERS, signal: AbortSignal.timeout(5000) });
+
+    if (!res.ok) throw new Error(`Yahoo Finance history HTTP ${res.status} ${res.statusText}`);
+
+    const json = (await res.json()) as {
+      chart?: {
+        result?: Array<{
+          timestamp?: number[];
+          indicators?: { quote?: Array<{ close?: (number | null)[] }> };
+        }>;
+      };
+    };
+
+    const result = json?.chart?.result?.[0];
+    const timestamps = result?.timestamp ?? [];
+    const closes = result?.indicators?.quote?.[0]?.close ?? [];
+
+    const points: ChartPoint[] = [];
+    for (let i = 0; i < timestamps.length; i++) {
+      const price = closes[i];
+      if (price != null && isFinite(price)) {
+        points.push({
+          d: formatPeriodLabel(timestamps[i], period),
+          p: parseFloat(price.toFixed(4)),
+        });
+      }
+    }
+
+    if (points.length > 0) {
+      periodHistoryCache.set(cacheKey, { data: points, fetchedAt: now });
+      return points;
+    }
+  } catch (err) {
+    const isTimeout = err instanceof Error && err.name === "TimeoutError";
+    logger.warn({ err, ticker, period, timeout: isTimeout }, isTimeout
+      ? `Yahoo Finance history fetch timed out for ${ticker} (${period})`
+      : `Yahoo Finance history fetch failed for ${ticker} (${period})`
     );
   }
 

@@ -3,7 +3,7 @@ import {
   ListStocksResponse,
   GetStockResponse,
 } from "@workspace/api-zod";
-import { fetchQuotes, fetchWeeklyHistory } from "../lib/yahoo-finance";
+import { fetchQuotes, fetchWeeklyHistory, fetchHistory, VALID_PERIODS } from "../lib/yahoo-finance";
 import { fetchPolygonBatch, fetchAlphaVantage, type RawMarketData } from "../lib/market-data";
 import { logger } from "../lib/logger";
 
@@ -327,6 +327,40 @@ router.get("/stocks/:ticker", async (req, res) => {
 
   const parsed = GetStockResponse.parse(stock);
   res.json(parsed);
+});
+
+router.get("/stocks/:ticker/history", async (req, res) => {
+  const { ticker } = req.params;
+  const { period = "3M" } = req.query as { period?: string };
+
+  const def = stockDefinitions.find(
+    (s) => s.ticker.toUpperCase() === ticker.toUpperCase()
+  );
+
+  if (!def) {
+    res.status(404).json({ error: "Stock not found" });
+    return;
+  }
+
+  const upperPeriod = period.toUpperCase();
+  if (!VALID_PERIODS.includes(upperPeriod as (typeof VALID_PERIODS)[number])) {
+    res.status(400).json({
+      error: `Invalid period. Must be one of: ${VALID_PERIODS.join(", ")}`,
+    });
+    return;
+  }
+
+  const data = await fetchHistory(
+    def.ticker,
+    upperPeriod as (typeof VALID_PERIODS)[number],
+  );
+
+  if (!data) {
+    res.status(503).json({ error: "History data temporarily unavailable" });
+    return;
+  }
+
+  res.json({ ticker: def.ticker, period: upperPeriod, data });
 });
 
 export default router;

@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { statusPill } from '@/lib/scoring';
-import { historicalData } from '@/lib/history-data';
 import type { Stock } from '@workspace/api-client-react';
 
 interface PeerComparisonProps {
@@ -22,8 +21,7 @@ function getPeers(selected: Stock, allStocks: Stock[]): Stock[] {
   return [...sameIndustry, ...sameStatus, ...rest].slice(0, 3);
 }
 
-function MiniSparkline({ ticker, color }: { ticker: string; color: string }) {
-  const data = historicalData[ticker]?.['3M'] ?? [];
+function MiniSparkline({ data, color }: { data: { d: string; p: number }[]; color: string }) {
   return (
     <ResponsiveContainer width="100%" height={48}>
       <LineChart data={data} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
@@ -106,7 +104,7 @@ export function PeerComparison({ selected, allStocks, onSelect }: PeerComparison
 
               {/* Sparkline */}
               <div className="mb-3 -mx-1">
-                <MiniSparkline ticker={peer.ticker} color={sparkColor} />
+                <MiniSparkline data={peer.chart} color={sparkColor} />
               </div>
 
               {/* Metric comparison grid */}

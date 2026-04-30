@@ -12,41 +12,39 @@ import {
 } from "@workspace/api-client-react";
 import { mockStockData, mockAlerts, mockWatchlist } from "@/lib/mock-data";
 import { cyclicStocks, applyRealPrices, type CyclicStock } from "@/lib/cycle-data";
+import type { PricePoint } from "@/lib/history-data";
 
 export function useDashboardStocks(params?: { q?: string; status?: string }) {
   const query = useListStocks(params, { query: { queryKey: getListStocksQueryKey(params), retry: false, staleTime: 60000 } });
   
-  // Robust fallback pattern
+  // Robust fallback pattern — live prices are already embedded by the stocks endpoint
   const stocks = query.data ?? mockStockData.filter(s => {
     const matchQuery = !params?.q || `${s.ticker} ${s.company} ${s.industry}`.toLowerCase().includes(params.q.toLowerCase());
     const matchStatus = !params?.status || params.status === 'all' || s.status === params.status;
     return matchQuery && matchStatus;
   }).sort((a, b) => b.bounceProbability - a.bounceProbability);
 
-  // Enrich with live prices from /api/prices
-  const tickers = stocks.map((s) => s.ticker).join(",");
-  const { data: priceMap } = useQuery<Record<string, number>>({
-    queryKey: ["dashboard-live-prices", tickers],
+  return { ...query, data: stocks, isLiveData: query.data != null };
+}
+
+/**
+ * Fetch period-based price history for a single ticker from the
+ * /api/stocks/:ticker/history?period= endpoint.
+ * Falls back gracefully when the API is unavailable.
+ */
+export function useStockHistory(ticker: string, period: string) {
+  return useQuery<PricePoint[]>({
+    queryKey: ["stock-history", ticker, period],
     queryFn: async () => {
-      const res = await fetch(`/api/prices?tickers=${tickers}`);
-      if (!res.ok) throw new Error(`prices fetch failed: ${res.status} ${res.statusText}`);
-      return res.json();
+      const res = await fetch(`/api/stocks/${ticker}/history?period=${period}`);
+      if (!res.ok) throw new Error(`history fetch failed: ${res.status}`);
+      const json = await res.json() as { data: PricePoint[] };
+      return json.data;
     },
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
     retry: false,
-    enabled: tickers.length > 0,
+    enabled: !!ticker,
   });
-
-  const now = new Date().toISOString();
-  const data = priceMap
-    ? stocks.map((s) =>
-        priceMap[s.ticker] != null
-          ? { ...s, price: priceMap[s.ticker], priceTimestamp: now }
-          : s,
-      )
-    : stocks;
-
-  return { ...query, data, isLiveData: query.data != null };
 }
 
 export function useDashboardAlerts() {
