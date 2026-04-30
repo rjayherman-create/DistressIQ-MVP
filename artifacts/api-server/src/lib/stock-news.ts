@@ -87,6 +87,7 @@ async function fetchPolygonNews(
 }
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Yahoo Finance RSS fallback
 // ---------------------------------------------------------------------------
 
@@ -96,13 +97,35 @@ const FETCH_HEADERS = {
   Accept: "application/rss+xml, application/xml, text/xml, */*",
 };
 
+// Pre-compiled regexes used in RSS item parsing.
+const RSS_ITEM_REGEX = /<item>([\s\S]*?)<\/item>/gi;
+const CDATA_REGEX = /^<!\[CDATA\[|\]\]>$/g;
+const HTML_TAG_REGEX = /<[^>]+>/g;
+const WHITESPACE_REGEX = /\s+/g;
+
+function makeTagRegex(tag: string): [RegExp, RegExp] {
+  return [
+    new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>`, "i"),
+    new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"),
+  ];
+}
+
+// Cache compiled tag regexes to avoid rebuilding them for each RSS item.
+const tagRegexCache = new Map<string, [RegExp, RegExp]>();
+
 function parseRssItem(
   item: string,
+  ticker: string,
   idxCounter: number,
 ): StockNewsItem | null {
   const getTag = (tag: string): string | undefined => {
-    const m = item.match(new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>`, "i")) ??
-      item.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
+    let regexPair = tagRegexCache.get(tag);
+    if (!regexPair) {
+      regexPair = makeTagRegex(tag);
+      tagRegexCache.set(tag, regexPair);
+    }
+    const [cdataRe, plainRe] = regexPair;
+    const m = item.match(cdataRe) ?? item.match(plainRe);
     return m ? m[1].trim() : undefined;
   };
 
@@ -121,16 +144,20 @@ function parseRssItem(
   }
 
   // Extract a clean URL from link (strip CDATA / whitespace)
-  const cleanLink = link.replace(/^<!\[CDATA\[|\]\]>$/g, "").trim();
+  const cleanLink = link.replace(CDATA_REGEX, "").trim();
   if (!cleanLink.startsWith("http")) return null;
 
   // Strip HTML tags from description
   const cleanSummary = description
-    ? description.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+    ? description.replace(HTML_TAG_REGEX, " ").replace(WHITESPACE_REGEX, " ").trim()
     : undefined;
 
+  // Use ticker + link hash for a stable, unique ID across fetches.
+  const linkHash = cleanLink.split("").reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) >>> 0, 0);
+  const id = `yahoo-rss-${ticker.toUpperCase()}-${linkHash}-${idxCounter}`;
+
   return {
-    id: `yahoo-rss-${idxCounter}`,
+    id,
     title,
     url: cleanLink,
     source: "Yahoo Finance",
@@ -156,17 +183,18 @@ async function fetchYahooRssNews(
 
   const text = await res.text();
 
-  // Extract <item>...</item> blocks
+  // Extract <item>...</item> blocks using the pre-compiled regex.
+  // Reset lastIndex before each use since it's a stateful global regex.
+  RSS_ITEM_REGEX.lastIndex = 0;
   const itemBlocks: string[] = [];
-  const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
   let match: RegExpExecArray | null;
-  while ((match = itemRegex.exec(text)) !== null) {
+  while ((match = RSS_ITEM_REGEX.exec(text)) !== null) {
     itemBlocks.push(match[1]);
   }
 
   const items: StockNewsItem[] = [];
   for (let i = 0; i < itemBlocks.length && items.length < limit; i++) {
-    const parsed = parseRssItem(itemBlocks[i], i);
+    const parsed = parseRssItem(itemBlocks[i], ticker, i);
     if (parsed) items.push(parsed);
   }
 
