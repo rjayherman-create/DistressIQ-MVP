@@ -46,12 +46,12 @@ export function useDashboardStocks(params?: { q?: string; status?: string }) {
       )
     : stocks;
 
-  return { ...query, data };
+  return { ...query, data, isLiveData: query.data != null };
 }
 
 export function useDashboardAlerts() {
   const query = useListAlerts({ query: { queryKey: getListAlertsQueryKey(), retry: false, staleTime: 60000 } });
-  return { ...query, data: query.data ?? mockAlerts };
+  return { ...query, data: query.data ?? mockAlerts, isLiveData: query.data != null };
 }
 
 /**
