@@ -2,9 +2,11 @@ import { Router, type IRouter } from "express";
 import {
   ListStocksResponse,
   GetStockResponse,
+  GetStockNewsResponse,
 } from "@workspace/api-zod";
 import { fetchQuotes, fetchWeeklyHistory } from "../lib/yahoo-finance";
 import { fetchPolygonBatch, fetchAlphaVantage, type RawMarketData } from "../lib/market-data";
+import { fetchStockNews } from "../lib/stock-news";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -1027,6 +1029,30 @@ router.get("/stocks/:ticker", async (req, res) => {
 
   const parsed = GetStockResponse.parse(stock);
   res.json(parsed);
+});
+
+router.get("/stocks/:ticker/news", async (req, res) => {
+  const { ticker } = req.params;
+  const limitRaw = req.query.limit;
+  const limit = limitRaw !== undefined ? Math.max(1, Math.min(50, Number(limitRaw) || 10)) : 10;
+
+  const def = stockDefinitions.find(
+    (s) => s.ticker.toUpperCase() === ticker.toUpperCase()
+  );
+
+  if (!def) {
+    res.status(404).json({ error: "Stock not found" });
+    return;
+  }
+
+  try {
+    const news = await fetchStockNews(def.ticker, limit);
+    const parsed = GetStockNewsResponse.parse(news);
+    res.json(parsed);
+  } catch (err) {
+    logger.warn({ err, ticker: def.ticker }, "Failed to fetch news — returning empty list");
+    res.json([]);
+  }
 });
 
 export default router;

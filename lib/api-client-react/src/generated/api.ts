@@ -22,6 +22,7 @@ import type {
   BeginBrowserLoginParams,
   ErrorEnvelope,
   ErrorResponse,
+  GetStockNewsParams,
   HandleBrowserLoginCallbackParams,
   HealthStatus,
   ListStocksParams,
@@ -29,6 +30,7 @@ import type {
   MobileTokenExchangeRequest,
   MobileTokenExchangeSuccess,
   Stock,
+  StockNewsItem,
   WatchlistResponse,
 } from "./api.schemas";
 
@@ -289,6 +291,116 @@ export function useGetStock<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetStockQueryOptions(ticker, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns recent news articles for the given ticker from live sources (Polygon.io when available, Yahoo Finance RSS as fallback).
+ * @summary Get live news for a stock
+ */
+export const getGetStockNewsUrl = (
+  ticker: string,
+  params?: GetStockNewsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/stocks/${ticker}/news?${stringifiedParams}`
+    : `/api/stocks/${ticker}/news`;
+};
+
+export const getStockNews = async (
+  ticker: string,
+  params?: GetStockNewsParams,
+  options?: RequestInit,
+): Promise<StockNewsItem[]> => {
+  return customFetch<StockNewsItem[]>(getGetStockNewsUrl(ticker, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStockNewsQueryKey = (
+  ticker: string,
+  params?: GetStockNewsParams,
+) => {
+  return [`/api/stocks/${ticker}/news`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetStockNewsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStockNews>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  ticker: string,
+  params?: GetStockNewsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStockNews>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetStockNewsQueryKey(ticker, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getStockNews>>> = ({
+    signal,
+  }) => getStockNews(ticker, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!ticker,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStockNews>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStockNewsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStockNews>>
+>;
+export type GetStockNewsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get live news for a stock
+ */
+
+export function useGetStockNews<
+  TData = Awaited<ReturnType<typeof getStockNews>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  ticker: string,
+  params?: GetStockNewsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStockNews>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStockNewsQueryOptions(ticker, params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

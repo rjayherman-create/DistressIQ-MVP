@@ -8,10 +8,15 @@ import {
   useGetWatchlist,
   getGetWatchlistQueryKey,
   useAddToWatchlist,
-  useRemoveFromWatchlist
+  useRemoveFromWatchlist,
+  useGetStockNews,
+  getGetStockNewsQueryKey,
+  type StockNewsItem,
 } from "@workspace/api-client-react";
 import { mockStockData, mockAlerts, mockWatchlist } from "@/lib/mock-data";
 import { cyclicStocks, applyRealPrices, type CyclicStock } from "@/lib/cycle-data";
+
+export { type StockNewsItem };
 
 export function useDashboardStocks(params?: { q?: string; status?: string }) {
   const query = useListStocks(params, { query: { queryKey: getListStocksQueryKey(params), retry: false, staleTime: 60000 } });
@@ -129,4 +134,24 @@ export function useLocalWatchlist() {
   };
 
   return { watchlist, toggleWatchlist };
+}
+
+/**
+ * Fetch live news for a specific stock ticker.
+ * Returns an empty array when the ticker is not provided or the API is unavailable.
+ */
+export function useStockNews(ticker: string | undefined, limit = 8) {
+  const query = useGetStockNews(
+    ticker ?? "",
+    { limit },
+    {
+      query: {
+        queryKey: getGetStockNewsQueryKey(ticker ?? "", { limit }),
+        enabled: !!ticker,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        retry: false,
+      },
+    },
+  );
+  return { news: query.data ?? [], isLoading: query.isLoading, isError: query.isError };
 }

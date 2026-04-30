@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { 
   Search, Bell, TrendingUp, TrendingDown, AlertTriangle, 
   Filter, BarChart3, Activity, DollarSign, ShieldAlert, 
-  Building2, Users, Briefcase 
+  Building2, Users, Briefcase, Newspaper, ExternalLink
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-import { useDashboardStocks, useDashboardAlerts, useLocalWatchlist } from '@/hooks/use-distressiq';
+import { useDashboardStocks, useDashboardAlerts, useLocalWatchlist, useStockNews, type StockNewsItem } from '@/hooks/use-distressiq';
 import { statusPill } from '@/lib/scoring';
 import { ScoreCard } from './score-card';
 import { PeerComparison } from './peer-comparison';
@@ -64,6 +64,8 @@ export function DistressIQDashboard() {
   const selected = useMemo(() => {
     return stocks.find(s => s.ticker === selectedTicker) || stocks[0];
   }, [stocks, selectedTicker]);
+
+  const { news: stockNews, isLoading: newsLoading } = useStockNews(selected?.ticker);
 
   const topSetups = stocks.slice(0, 3);
 
@@ -720,6 +722,81 @@ export function DistressIQDashboard() {
                         <p className="font-bold text-slate-900">What would break the thesis</p>
                         <p className="mt-2 leading-relaxed">Fresh dilution, failed support zones, worsening runway, or additional exchange deficiencies beyond price.</p>
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Live News Card */}
+                  <Card className="rounded-[2rem] shadow-sm border-slate-200/60">
+                    <CardHeader className="pt-6 px-6 pb-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="rounded-xl bg-blue-50 p-2 ring-1 ring-blue-100">
+                            <Newspaper className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <CardTitle className="text-xl font-display font-bold">Live news</CardTitle>
+                        </div>
+                        <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1 ${stockNews.length > 0 ? 'bg-emerald-50 text-emerald-700 ring-emerald-200/60' : 'bg-slate-50 text-slate-500 ring-slate-200/60'}`}>
+                          <span className="relative flex h-1.5 w-1.5">
+                            {stockNews.length > 0 && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
+                            <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${stockNews.length > 0 ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                          </span>
+                          {stockNews.length > 0 ? 'Live' : 'No feed'}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="px-6 pb-6">
+                      {newsLoading ? (
+                        <div className="space-y-3">
+                          {[1, 2, 3].map((i) => (
+                            <div key={i} className="animate-pulse rounded-2xl border border-slate-100 bg-slate-50 p-4 h-20" />
+                          ))}
+                        </div>
+                      ) : stockNews.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-slate-50/50 py-8 text-center">
+                          <Newspaper className="h-8 w-8 text-slate-300 mb-2" />
+                          <p className="text-sm font-medium text-slate-500">No recent news found for {selected.ticker}</p>
+                          <p className="text-xs text-slate-400 mt-1">Try again later or check external sources</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {stockNews.map((item: StockNewsItem) => (
+                            <a
+                              key={item.id}
+                              href={item.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="group flex items-start gap-3 rounded-2xl border border-slate-100 bg-white p-4 transition-all hover:border-slate-300 hover:shadow-sm hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                            >
+                              {item.imageUrl && (
+                                <img
+                                  src={item.imageUrl}
+                                  alt=""
+                                  className="h-14 w-14 shrink-0 rounded-xl object-cover bg-slate-100"
+                                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-sm font-semibold text-slate-800 leading-snug line-clamp-2 group-hover:text-blue-700 transition-colors">
+                                    {item.title}
+                                  </p>
+                                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-slate-300 group-hover:text-blue-400 mt-0.5 transition-colors" />
+                                </div>
+                                {item.summary && (
+                                  <p className="mt-1 text-xs text-slate-500 leading-relaxed line-clamp-2">{item.summary}</p>
+                                )}
+                                <div className="mt-2 flex items-center gap-2 text-[10px] font-medium text-slate-400">
+                                  <span className="rounded-full bg-slate-100 px-2 py-0.5">{item.source}</span>
+                                  <span>·</span>
+                                  <span className="tabular-nums">
+                                    {new Date(item.publishedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                                  </span>
+                                </div>
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
