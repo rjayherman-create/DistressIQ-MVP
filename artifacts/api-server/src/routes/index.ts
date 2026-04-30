@@ -7,6 +7,7 @@ import authRouter from "./auth";
 import pricesRouter from "./prices";
 import aiRouter from "./ai";
 import delistingRiskRouter from "./delisting-risk";
+import wishlistItemsRouter from "./wishlist-items";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(alertsRouter);
 router.use(pricesRouter);
 router.use(aiRouter);
 router.use(delistingRiskRouter);
+router.use(wishlistItemsRouter);
 
 export default router;

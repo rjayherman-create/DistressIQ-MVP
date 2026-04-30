@@ -265,3 +265,59 @@ export const ListAlertsResponseItem = zod.object({
   createdAt: zod.string(),
 });
 export const ListAlertsResponse = zod.array(ListAlertsResponseItem);
+
+/**
+ * @summary Add item to wishlist
+ */
+export const AddToWishlistBody = zod.object({
+  userId: zod.string().min(1),
+  itemId: zod.string().min(1),
+  itemType: zod.string().min(1),
+  notes: zod.string().optional(),
+});
+
+export const AddToWishlistResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Get user wishlist
+ */
+export const GetWishlistParams = zod.object({
+  userId: zod.coerce.string(),
+});
+
+export const GetWishlistResponseItem = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  itemId: zod.string(),
+  itemType: zod.string(),
+  notes: zod.string().nullable(),
+  createdAt: zod.string().nullable(),
+});
+export const GetWishlistResponse = zod.array(GetWishlistResponseItem);
+
+/**
+ * @summary Remove item from wishlist
+ */
+export const RemoveFromWishlistBody = zod.object({
+  userId: zod.string().min(1),
+  itemId: zod.string().min(1),
+});
+
+export const RemoveFromWishlistItemResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Update wishlist item notes
+ */
+export const UpdateWishlistItemBody = zod.object({
+  userId: zod.string().min(1),
+  itemId: zod.string().min(1),
+  notes: zod.string().optional(),
+});
+
+export const UpdateWishlistItemResponse = zod.object({
+  success: zod.boolean(),
+});
