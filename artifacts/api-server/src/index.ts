@@ -28,9 +28,17 @@ app.listen(port, (err) => {
 // Background scan loop — runs every 60 seconds (Railway-compatible).
 // Scans all defined tickers for pre-delisting signals and updates the
 // in-memory tracking store with any new alert messages.
-setInterval(() => {
+const scanInterval = setInterval(() => {
   logger.debug("Running background stock scanner");
   runBackgroundScanner().catch((err: unknown) => {
     logger.error({ err }, "Background scanner error");
   });
 }, 60_000);
+
+// Clear the interval on graceful shutdown so the process can exit cleanly.
+process.once("SIGTERM", () => {
+  clearInterval(scanInterval);
+});
+process.once("SIGINT", () => {
+  clearInterval(scanInterval);
+});

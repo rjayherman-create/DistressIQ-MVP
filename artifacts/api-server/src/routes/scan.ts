@@ -5,6 +5,9 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
+/** Minimum drop in bounceProbability between scans that raises a tracking alert. */
+const BOUNCE_PROBABILITY_ALERT_THRESHOLD = 10;
+
 // ---------------------------------------------------------------------------
 // Scan definitions
 // ---------------------------------------------------------------------------
@@ -109,7 +112,7 @@ function checkAlerts(
   if (!oldData) return alerts;
 
   // Bounce probability dropped significantly — deterioration signal
-  if (newData.bounceProbability < oldData.bounceProbability - 10) {
+  if (newData.bounceProbability < oldData.bounceProbability - BOUNCE_PROBABILITY_ALERT_THRESHOLD) {
     alerts.push(
       `Bounce probability fell from ${oldData.bounceProbability} to ${newData.bounceProbability}`,
     );

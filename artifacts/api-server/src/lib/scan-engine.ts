@@ -208,8 +208,13 @@ export function analyzeScan(input: ScanInput): ScanResult {
     return { status: "invalid", reason: validation.reason };
   }
 
-  // 2. Score — two independent passes (cross-check guard; future-proofs for
-  //    non-deterministic scoring extensions such as probabilistic models).
+  // 2. Score — two independent passes.
+  //
+  //    Both passes are deterministic and will always agree for the current
+  //    scoring model.  The dual-pass structure is kept intentionally so that
+  //    if a future non-deterministic scoring extension (e.g. a probabilistic
+  //    RSI estimator) is introduced, the cross-check gate is already wired up
+  //    and will catch inter-pass disagreements without requiring a refactor.
   const scoreA = computeScanSignals(input);
   const scoreB = computeScanSignals(input);
 
