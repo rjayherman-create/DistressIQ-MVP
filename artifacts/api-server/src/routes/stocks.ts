@@ -163,6 +163,7 @@ async function buildLiveStockData() {
     ...TICKERS.map((t) => fetchWeeklyHistory(t)),
   ]);
 
+  const fallbackTimestamp = new Date().toISOString();
   return stockDefinitions.map((def, i) => {
     const quote = quotes.get(def.ticker);
     const history = histories[i];
@@ -170,7 +171,7 @@ async function buildLiveStockData() {
       ...def,
       price: quote?.price ?? def.price,
       volume: quote?.volume ?? def.volume,
-      priceTimestamp: quote ? new Date(quote.fetchedAt).toISOString() : undefined,
+      priceTimestamp: quote ? new Date(quote.fetchedAt).toISOString() : fallbackTimestamp,
       chart: history ?? def.chart,
     };
   });
@@ -222,7 +223,7 @@ router.get("/stocks/:ticker", async (req, res) => {
     ...def,
     price: quote?.price ?? def.price,
     volume: quote?.volume ?? def.volume,
-    priceTimestamp: quote ? new Date(quote.fetchedAt).toISOString() : undefined,
+    priceTimestamp: quote ? new Date(quote.fetchedAt).toISOString() : new Date().toISOString(),
     chart: history ?? def.chart,
   };
 
