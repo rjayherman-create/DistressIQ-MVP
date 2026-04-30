@@ -4,27 +4,71 @@ import {
   AddToWatchlistResponse,
   RemoveFromWatchlistResponse,
 } from "@workspace/api-zod";
+import { db, watchlistsTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-const watchlist = new Set<string>();
-
-router.get("/watchlist", (_req, res) => {
-  const parsed = GetWatchlistResponse.parse({ tickers: [...watchlist] });
+router.get("/watchlist", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const userId = req.user.id;
+  const rows = await db
+    .select()
+    .from(watchlistsTable)
+    .where(eq(watchlistsTable.userId, userId));
+  const tickers = rows.map((r) => r.ticker);
+  const parsed = GetWatchlistResponse.parse({ tickers });
   res.json(parsed);
 });
 
-router.post("/watchlist/:ticker", (req, res) => {
-  const { ticker } = req.params;
-  watchlist.add(ticker.toUpperCase());
-  const parsed = AddToWatchlistResponse.parse({ tickers: [...watchlist] });
+router.post("/watchlist/:ticker", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const userId = req.user.id;
+  const ticker = req.params.ticker.toUpperCase();
+
+  // Upsert: only insert if not already present
+  const existing = await db
+    .select()
+    .from(watchlistsTable)
+    .where(and(eq(watchlistsTable.userId, userId), eq(watchlistsTable.ticker, ticker)));
+
+  if (existing.length === 0) {
+    await db.insert(watchlistsTable).values({ userId, ticker });
+  }
+
+  const rows = await db
+    .select()
+    .from(watchlistsTable)
+    .where(eq(watchlistsTable.userId, userId));
+  const tickers = rows.map((r) => r.ticker);
+  const parsed = AddToWatchlistResponse.parse({ tickers });
   res.json(parsed);
 });
 
-router.delete("/watchlist/:ticker", (req, res) => {
-  const { ticker } = req.params;
-  watchlist.delete(ticker.toUpperCase());
-  const parsed = RemoveFromWatchlistResponse.parse({ tickers: [...watchlist] });
+router.delete("/watchlist/:ticker", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const userId = req.user.id;
+  const ticker = req.params.ticker.toUpperCase();
+
+  await db
+    .delete(watchlistsTable)
+    .where(and(eq(watchlistsTable.userId, userId), eq(watchlistsTable.ticker, ticker)));
+
+  const rows = await db
+    .select()
+    .from(watchlistsTable)
+    .where(eq(watchlistsTable.userId, userId));
+  const tickers = rows.map((r) => r.ticker);
+  const parsed = RemoveFromWatchlistResponse.parse({ tickers });
   res.json(parsed);
 });
 

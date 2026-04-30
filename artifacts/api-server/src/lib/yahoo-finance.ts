@@ -13,9 +13,10 @@ const FETCH_HEADERS = {
 // Price cache
 // ---------------------------------------------------------------------------
 
-interface PriceEntry {
+export interface PriceEntry {
   price: number;
   volume: string;
+  rawVolume: number;
   fetchedAt: number;
 }
 
@@ -72,6 +73,7 @@ export async function fetchQuotes(
         const entry: PriceEntry = {
           price: parseFloat(item.regularMarketPrice.toFixed(4)),
           volume: formatVolume(item.regularMarketVolume ?? 0),
+          rawVolume: item.regularMarketVolume ?? 0,
           fetchedAt: now,
         };
         priceCache.set(item.symbol.toUpperCase(), entry);
