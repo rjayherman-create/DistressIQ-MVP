@@ -154,6 +154,9 @@ export function useLocalWatchlist() {
   const toggleWatchlist = async (ticker: string, listId?: string) => {
     const targetId = listId ?? activeListId;
     const upper = ticker.toUpperCase();
+    // Capture whether the ticker is currently tracked in the target list before updating state
+    const targetList = watchlists.find(l => l.id === targetId);
+    const wasTracked = targetList?.tickers.includes(upper) ?? false;
     setWatchlists(prev =>
       prev.map(l => {
         if (l.id !== targetId) return l;
@@ -164,8 +167,7 @@ export function useLocalWatchlist() {
     // Sync default list with API
     if (targetId === DEFAULT_LIST_ID) {
       try {
-        const isTracked = watchlist.includes(upper);
-        if (isTracked) {
+        if (wasTracked) {
           await removeMutation.mutateAsync({ ticker: upper });
         } else {
           await addMutation.mutateAsync({ ticker: upper });
@@ -178,7 +180,7 @@ export function useLocalWatchlist() {
 
   const createWatchlist = (name: string): WatchlistEntry => {
     const entry: WatchlistEntry = {
-      id: `wl-${Date.now()}`,
+      id: `wl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: name.trim() || 'New Watchlist',
       tickers: [],
       createdAt: new Date().toISOString(),
