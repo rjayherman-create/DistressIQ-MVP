@@ -114,7 +114,7 @@ export async function fetchWeeklyHistory(ticker: string): Promise<ChartPoint[] |
   }
 
   try {
-    const twoMonthsAgo = new Date(now - 60 * 24 * 60 * 60 * 1000);
+    const twoMonthsAgo = new Date(now - 8 * 7 * 24 * 60 * 60 * 1000);
     const historical = (await yahooFinance.chart(ticker, {
       interval: "1wk",
       period1: twoMonthsAgo,
