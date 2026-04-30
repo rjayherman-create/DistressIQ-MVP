@@ -17,11 +17,34 @@ export function useDashboardStocks(params?: { q?: string; status?: string }) {
   const query = useListStocks(params, { query: { queryKey: getListStocksQueryKey(params), retry: false, staleTime: 60000 } });
   
   // Robust fallback pattern
-  const data = query.data ?? mockStockData.filter(s => {
+  const stocks = query.data ?? mockStockData.filter(s => {
     const matchQuery = !params?.q || `${s.ticker} ${s.company} ${s.industry}`.toLowerCase().includes(params.q.toLowerCase());
     const matchStatus = !params?.status || params.status === 'all' || s.status === params.status;
     return matchQuery && matchStatus;
   }).sort((a, b) => b.bounceProbability - a.bounceProbability);
+
+  // Enrich with live prices from /api/prices
+  const tickers = stocks.map((s) => s.ticker).join(",");
+  const { data: priceMap } = useQuery<Record<string, number>>({
+    queryKey: ["dashboard-live-prices", tickers],
+    queryFn: async () => {
+      const res = await fetch(`/api/prices?tickers=${tickers}`);
+      if (!res.ok) throw new Error(`prices fetch failed: ${res.status} ${res.statusText}`);
+      return res.json();
+    },
+    staleTime: 60_000,
+    retry: false,
+    enabled: tickers.length > 0,
+  });
+
+  const now = new Date().toISOString();
+  const data = priceMap
+    ? stocks.map((s) =>
+        priceMap[s.ticker] != null
+          ? { ...s, price: priceMap[s.ticker], priceTimestamp: now }
+          : s,
+      )
+    : stocks;
 
   return { ...query, data };
 }
