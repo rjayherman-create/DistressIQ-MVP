@@ -52,7 +52,7 @@ export const ListStocksResponseItem = zod.object({
   status: zod.string(),
   volume: zod.string(),
   priceTimestamp: zod
-    .date()
+    .string()
     .optional()
     .describe(
       "ISO-8601 timestamp of when the price was last fetched from a live market data source. Absent when only static fallback data is available.",
@@ -98,7 +98,7 @@ export const GetStockResponse = zod.object({
   status: zod.string(),
   volume: zod.string(),
   priceTimestamp: zod
-    .date()
+    .string()
     .optional()
     .describe(
       "ISO-8601 timestamp of when the price was last fetched from a live market data source. Absent when only static fallback data is available.",

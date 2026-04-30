@@ -965,7 +965,6 @@ async function buildLiveStockData() {
     ...TICKERS.map((t) => fetchWeeklyHistory(t)),
   ]);
 
-  const fallbackTimestamp = new Date().toISOString();
   return stockDefinitions.map((def, i) => {
     const quote = quotes.get(def.ticker);
     const history = histories[i];
@@ -980,7 +979,10 @@ async function buildLiveStockData() {
       ...adjusted,
       price: quote?.price ?? def.price,
       volume: quote?.volume ?? def.volume,
-      priceTimestamp: quote ? new Date(quote.fetchedAt).toISOString() : fallbackTimestamp,
+      // Only set priceTimestamp when live price data was actually fetched.
+      // undefined when falling back to static data so callers know no live
+      // price is available rather than being misled by a current timestamp.
+      priceTimestamp: quote ? new Date(quote.fetchedAt).toISOString() : undefined,
       chart: liveChart,
     };
   });
@@ -989,26 +991,31 @@ async function buildLiveStockData() {
 router.get("/stocks", async (req, res) => {
   const { q, status } = req.query as { q?: string; status?: string };
 
-  let results = await buildLiveStockData();
+  try {
+    let results = await buildLiveStockData();
 
-  if (q) {
-    const lower = q.toLowerCase();
-    results = results.filter(
-      (s) =>
-        s.ticker.toLowerCase().includes(lower) ||
-        s.company.toLowerCase().includes(lower) ||
-        s.industry.toLowerCase().includes(lower)
-    );
+    if (q) {
+      const lower = q.toLowerCase();
+      results = results.filter(
+        (s) =>
+          s.ticker.toLowerCase().includes(lower) ||
+          s.company.toLowerCase().includes(lower) ||
+          s.industry.toLowerCase().includes(lower)
+      );
+    }
+
+    if (status && status !== "all") {
+      results = results.filter((s) => s.status === status);
+    }
+
+    results.sort((a, b) => b.bounceProbability - a.bounceProbability);
+
+    const parsed = ListStocksResponse.parse(results);
+    res.json(parsed);
+  } catch (err) {
+    logger.error({ err }, "Failed to build or serve live stock data");
+    res.status(500).json({ error: "Failed to fetch stock data" });
   }
-
-  if (status && status !== "all") {
-    results = results.filter((s) => s.status === status);
-  }
-
-  results.sort((a, b) => b.bounceProbability - a.bounceProbability);
-
-  const parsed = ListStocksResponse.parse(results);
-  res.json(parsed);
 });
 
 router.get("/stocks/:ticker", async (req, res) => {
@@ -1022,28 +1029,33 @@ router.get("/stocks/:ticker", async (req, res) => {
     return;
   }
 
-  const [quotes, history] = await Promise.all([
-    fetchLivePrices([def.ticker]),
-    fetchWeeklyHistory(def.ticker),
-  ]);
+  try {
+    const [quotes, history] = await Promise.all([
+      fetchLivePrices([def.ticker]),
+      fetchWeeklyHistory(def.ticker),
+    ]);
 
-  const quote = quotes.get(def.ticker);
-  const liveChart = history ?? def.chart;
-  const livePrice = quote?.price ?? null;
+    const quote = quotes.get(def.ticker);
+    const liveChart = history ?? def.chart;
+    const livePrice = quote?.price ?? null;
 
-  const adjusted = computeAdjustedScores(def, livePrice, liveChart);
+    const adjusted = computeAdjustedScores(def, livePrice, liveChart);
 
-  const stock = {
-    ...def,
-    ...adjusted,
-    price: quote?.price ?? def.price,
-    volume: quote?.volume ?? def.volume,
-    priceTimestamp: quote ? new Date(quote.fetchedAt).toISOString() : new Date().toISOString(),
-    chart: liveChart,
-  };
+    const stock = {
+      ...def,
+      ...adjusted,
+      price: quote?.price ?? def.price,
+      volume: quote?.volume ?? def.volume,
+    priceTimestamp: quote ? new Date(quote.fetchedAt).toISOString() : undefined,
+      chart: liveChart,
+    };
 
-  const parsed = GetStockResponse.parse(stock);
-  res.json(parsed);
+    const parsed = GetStockResponse.parse(stock);
+    res.json(parsed);
+  } catch (err) {
+    logger.error({ err, ticker: def.ticker }, "Failed to build or serve live stock detail");
+    res.status(500).json({ error: "Failed to fetch stock data" });
+  }
 });
 
 router.get("/stocks/:ticker/news", async (req, res) => {
