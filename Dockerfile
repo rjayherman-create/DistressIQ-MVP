@@ -47,7 +47,7 @@ FROM node:24-alpine
 
 WORKDIR /app
 
-# Copy only the built artefacts from the builder
+# Copy only the built artifacts from the builder
 COPY --from=builder /build/artifacts/api-server/dist   ./artifacts/api-server/dist
 COPY --from=builder /build/artifacts/distressiq/dist/public ./artifacts/distressiq/dist/public
 
