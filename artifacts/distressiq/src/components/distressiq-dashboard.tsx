@@ -55,8 +55,9 @@ export function DistressIQDashboard() {
     return isNaN(d.getTime()) ? null : d;
   };
 
-  const { data: stocks = [] } = useDashboardStocks({ q: query, status: statusFilter });
-  const { data: alerts = [] } = useDashboardAlerts();
+  const { data: stocks = [], isLiveData: stocksLive } = useDashboardStocks({ q: query, status: statusFilter });
+  const { data: alerts = [], isLiveData: alertsLive } = useDashboardAlerts();
+  const isLiveData = stocksLive || alertsLive;
   const { watchlist, toggleWatchlist } = useLocalWatchlist();
 
   // Safely get selected stock or fallback to first
@@ -116,12 +117,12 @@ export function DistressIQDashboard() {
                   <Activity className="h-3.5 w-3.5" />
                   DistressIQ MVP
                 </div>
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200/60">
+                <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ${isLiveData ? 'bg-emerald-50 text-emerald-700 ring-emerald-200/60' : 'bg-amber-50 text-amber-700 ring-amber-200/60'}`}>
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isLiveData ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${isLiveData ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                   </span>
-                  Live data
+                  {isLiveData ? 'Live data' : 'Demo data'}
                 </div>
               </div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl font-display">
@@ -171,7 +172,7 @@ export function DistressIQDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-500">Active setups</p>
-                  <p className="mt-1.5 text-3xl font-bold text-slate-900">18</p>
+                  <p className="mt-1.5 text-3xl font-bold text-slate-900">{stocks.length}</p>
                 </div>
                 <div className="rounded-2xl bg-blue-50 p-3 ring-1 ring-blue-100"><BarChart3 className="h-5 w-5 text-blue-600" /></div>
               </div>
@@ -182,7 +183,7 @@ export function DistressIQDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-500">High-quality today</p>
-                  <p className="mt-1.5 text-3xl font-bold text-slate-900">7</p>
+                  <p className="mt-1.5 text-3xl font-bold text-slate-900">{stocks.filter(s => s.bounceProbability >= 65).length}</p>
                 </div>
                 <div className="rounded-2xl bg-emerald-50 p-3 ring-1 ring-emerald-100"><TrendingUp className="h-5 w-5 text-emerald-600" /></div>
               </div>
@@ -193,7 +194,7 @@ export function DistressIQDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-500">High risk names</p>
-                  <p className="mt-1.5 text-3xl font-bold text-slate-900">11</p>
+                  <p className="mt-1.5 text-3xl font-bold text-slate-900">{stocks.filter(s => s.delistingRisk >= 60).length}</p>
                 </div>
                 <div className="rounded-2xl bg-rose-50 p-3 ring-1 ring-rose-100"><ShieldAlert className="h-5 w-5 text-rose-600" /></div>
               </div>
@@ -204,7 +205,7 @@ export function DistressIQDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-500">Triggered alerts</p>
-                  <p className="mt-1.5 text-3xl font-bold text-slate-900">24</p>
+                  <p className="mt-1.5 text-3xl font-bold text-slate-900">{alerts.length}</p>
                 </div>
                 <div className="rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-100"><Bell className="h-5 w-5 text-amber-600" /></div>
               </div>
@@ -215,10 +216,13 @@ export function DistressIQDashboard() {
         {/* Real-time refresh indicator */}
         <div className="mb-6 flex items-center gap-2 text-xs text-slate-400">
           <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isLiveData ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+            <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isLiveData ? 'bg-emerald-500' : 'bg-amber-500'}`} />
           </span>
-          Data refreshes every 60 seconds &mdash; last updated at {lastRefreshedString}
+          {isLiveData
+            ? <>Data refreshes every 60 seconds &mdash; last updated at {lastRefreshedString}</>
+            : <>Showing demo data &mdash; live API unavailable</>
+          }
         </div>
 
         {/* Main Interface Tabs */}
