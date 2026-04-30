@@ -69,6 +69,24 @@ Routes added:
 - `POST /api/watchlist/:ticker` — add to watchlist
 - `DELETE /api/watchlist/:ticker` — remove from watchlist
 - `GET /api/alerts` — list triggered alerts
+- `GET /api/diagnostics` — checks API key configuration and external service reachability (Polygon, Alpha Vantage, Yahoo Finance); returns `allOk: true` when everything is wired correctly
+
+#### Required environment variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `PORT` | ✅ | Server port (set to `8080` by Replit in production) |
+| `DATABASE_URL` | ✅ | PostgreSQL connection string |
+| `POLYGON_API_KEY` | Optional (enables dual-source price verification) | Polygon.io API key — free tier works |
+| `ALPHA_VANTAGE_KEY` | Optional (enables dual-source price verification alongside Polygon) | Alpha Vantage API key — free tier works |
+
+When both `POLYGON_API_KEY` and `ALPHA_VANTAGE_KEY` are set the `/api/prices` route cross-validates prices from both sources before returning them.  If neither is set the server falls back to Yahoo Finance (no key needed).
+
+To verify all keys and connectivity are wired correctly after deployment, call:
+```
+GET /api/diagnostics
+```
+The response reports `configured` (key present) and `reachable` (live test) for each service, plus an `allOk` boolean.
 
 ## Packages
 
