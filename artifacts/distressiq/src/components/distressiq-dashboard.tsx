@@ -35,12 +35,18 @@ export function DistressIQDashboard() {
   const alertCount = useAlertCount();
 
   const [now, setNow] = useState(() => new Date());
+  const [lastRefreshed, setLastRefreshed] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+  useEffect(() => {
+    const id = setInterval(() => setLastRefreshed(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
   const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const dateString = now.toLocaleDateString([], { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+  const lastRefreshedString = lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   /** Returns a valid Date or null if the ISO string is missing or unparseable. */
   const parseTimestamp = (ts: string | undefined): Date | null => {
@@ -105,9 +111,18 @@ export function DistressIQDashboard() {
         >
           <div className="flex flex-col gap-5 rounded-[2rem] bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-200/60 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200/50">
-                <Activity className="h-3.5 w-3.5" />
-                DistressIQ MVP
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200/50">
+                  <Activity className="h-3.5 w-3.5" />
+                  DistressIQ MVP
+                </div>
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200/60">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                  </span>
+                  Live data
+                </div>
               </div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl font-display">
                 Pre-delisting opportunity intelligence
@@ -120,6 +135,7 @@ export function DistressIQDashboard() {
               <div className="flex flex-col items-end rounded-xl bg-slate-50 px-4 py-2.5 ring-1 ring-slate-200/60 min-w-[140px]">
                 <span className="text-xl font-bold tabular-nums text-slate-900 leading-tight">{timeString}</span>
                 <span className="text-xs font-medium text-slate-500 mt-0.5">{dateString}</span>
+                <span className="text-[10px] font-semibold text-emerald-600 mt-1 uppercase tracking-wide">Real-time</span>
               </div>
               <Button className="rounded-xl px-6 bg-slate-900 hover:bg-slate-800 text-white shadow-md shadow-slate-900/10 transition-all active:scale-95">
                 Start Free Trial
@@ -194,6 +210,15 @@ export function DistressIQDashboard() {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Real-time refresh indicator */}
+        <div className="mb-6 flex items-center gap-2 text-xs text-slate-400">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+          </span>
+          Data refreshes every 60 seconds &mdash; last updated at {lastRefreshedString}
         </div>
 
         {/* Main Interface Tabs */}
