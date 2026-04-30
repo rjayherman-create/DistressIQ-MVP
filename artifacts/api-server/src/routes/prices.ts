@@ -12,6 +12,24 @@ import { logger } from "../lib/logger";
 const router: IRouter = Router();
 
 /**
+ * Fill in any missing ticker prices in `result` by fetching from Yahoo Finance.
+ * Only tickers absent from `result` are queried; already-verified prices are
+ * never overwritten.
+ */
+async function fillFromYahoo(
+  missing: string[],
+  result: Record<string, number>,
+): Promise<void> {
+  if (missing.length === 0) return;
+  const yahooQuotes = await fetchQuotes(missing);
+  for (const [ticker, entry] of yahooQuotes.entries()) {
+    if (!(ticker in result)) {
+      result[ticker] = entry.price;
+    }
+  }
+}
+
+/**
  * GET /api/prices?tickers=MVST,MULN,IDEX,...
  *
  * Returns a JSON object mapping each requested ticker to its current market
@@ -52,6 +70,7 @@ router.get("/prices", async (req, res) => {
   // tolerance are included in the response.
   if (process.env.POLYGON_API_KEY && process.env.ALPHA_VANTAGE_KEY) {
     const result: Record<string, number> = {};
+    const unverified: string[] = [];
 
     await Promise.all(
       tickers.map(async (ticker) => {
@@ -80,9 +99,13 @@ router.get("/prices", async (req, res) => {
             { ticker, err },
             "Polygon+AlphaVantage price verification failed — omitting ticker",
           );
+          unverified.push(ticker);
         }
       }),
     );
+
+    // Fall back to Yahoo Finance for tickers that could not be dual-source verified.
+    await fillFromYahoo(unverified, result);
 
     res.json(result);
     return;
@@ -99,6 +122,7 @@ router.get("/prices", async (req, res) => {
   // failing the entire request.
   if (process.env.POLYGON_API_KEY && process.env.IEX_API_KEY) {
     const result: Record<string, number> = {};
+    const unverified: string[] = [];
 
     await Promise.all(
       tickers.map(async (ticker) => {
@@ -132,9 +156,13 @@ router.get("/prices", async (req, res) => {
             { ticker, err },
             "Dual-source price verification failed — omitting ticker",
           );
+          unverified.push(ticker);
         }
       }),
     );
+
+    // Fall back to Yahoo Finance for tickers that could not be dual-source verified.
+    await fillFromYahoo(unverified, result);
 
     res.json(result);
     return;
