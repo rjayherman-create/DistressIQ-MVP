@@ -93,6 +93,9 @@ interface AcceptanceRecord {
   timestamp: string;
 }
 
+// NOTE: Acceptance records are stored in-memory. They will be lost on server
+// restart and are not shared across multiple server instances. For production
+// use, consider persisting records to a database.
 const acceptanceLog: AcceptanceRecord[] = [];
 
 /**

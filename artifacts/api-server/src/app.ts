@@ -7,7 +7,7 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 import { authMiddleware } from "./middlewares/authMiddleware";
 import { timestampMiddleware } from "./lib/timestamp";
-import { injectDisclaimer, disclaimerMiddleware } from "./lib/disclaimer";
+import { injectDisclaimer } from "./lib/disclaimer";
 
 const app: Express = express();
 
