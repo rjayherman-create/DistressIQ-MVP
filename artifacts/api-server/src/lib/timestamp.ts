@@ -1,6 +1,5 @@
 import crypto from "crypto";
 import { type Request, type Response, type NextFunction } from "express";
-import { logger } from "./logger";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,8 +57,6 @@ export function timestampMiddleware(
 
   res.setHeader("X-Request-ID", req.meta.requestId);
   res.setHeader("X-Timestamp", ts.iso);
-
-  logger.info({ id: req.meta.requestId, path: req.path, time: ts.iso }, "[REQUEST]");
 
   next();
 }

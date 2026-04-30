@@ -283,9 +283,13 @@ async function checkPriceDrop(ticker: string): Promise<boolean> {
   if (!apiKey) return false;
 
   try {
+    const today = new Date().toISOString().slice(0, 10);
+    const twoYearsAgo = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
     const url =
       `https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(ticker)}/range/1/day` +
-      `/2024-01-01/2026-01-01?adjusted=true&apiKey=${apiKey}`;
+      `/${twoYearsAgo}/${today}?adjusted=true&apiKey=${apiKey}`;
 
     const res = await fetch(url, {
       headers: { Accept: "application/json" },

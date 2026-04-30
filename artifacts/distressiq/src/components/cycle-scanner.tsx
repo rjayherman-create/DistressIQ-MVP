@@ -25,18 +25,19 @@ function SignalBar({ value }: { value: number }) {
   );
 }
 
-function MiniSparkline({ history, phase }: { history: CyclicStock['history']; phase: CyclePhase }) {
+function MiniSparkline({ history, phase, id }: { history: CyclicStock['history']; phase: CyclePhase; id: string }) {
   const color = phaseConfig[phase].dot;
+  const gradientId = `sg-${id}`;
   return (
     <ResponsiveContainer width={80} height={30}>
       <AreaChart data={history} margin={{ top: 2, right: 0, left: 0, bottom: 2 }}>
         <defs>
-          <linearGradient id={`sg-${phase}`} x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor={color} stopOpacity={0.2} />
             <stop offset="95%" stopColor={color} stopOpacity={0} />
           </linearGradient>
         </defs>
-        <Area type="monotone" dataKey="p" stroke={color} strokeWidth={1.5} fill={`url(#sg-${phase})`} dot={false} />
+        <Area type="monotone" dataKey="p" stroke={color} strokeWidth={1.5} fill={`url(#${gradientId})`} dot={false} />
       </AreaChart>
     </ResponsiveContainer>
   );
@@ -397,7 +398,7 @@ export function CycleScanner() {
                       <SignalBar value={stock.signalStrength} />
                     </div>
                     <div className="shrink-0 text-right">
-                      <MiniSparkline history={stock.history} phase={stock.phase} />
+                      <MiniSparkline history={stock.history} phase={stock.phase} id={stock.ticker} />
                       <p className="text-xs font-bold text-slate-700 mt-0.5">${stock.currentPrice.toFixed(3)}</p>
                       <p className="text-[10px] text-emerald-600 font-semibold">+{stock.avgCycleGain}%</p>
                     </div>

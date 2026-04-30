@@ -5,7 +5,6 @@
 const VERIFY_CONFIG = {
   requireSources: true,
   minConfidence: 0.75,
-  allowAIOnly: false,
   maxAgeMinutes: 1440, // 24 hours freshness
 };
 
