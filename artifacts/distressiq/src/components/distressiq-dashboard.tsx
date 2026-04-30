@@ -268,6 +268,22 @@ export function DistressIQDashboard() {
                       </Select>
                     </div>
                   </div>
+                  {/* Status color legend */}
+                  <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-slate-100">
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Color key</span>
+                    <span className="flex items-center gap-1.5 text-xs text-slate-600">
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" />
+                      Recovery Candidate
+                    </span>
+                    <span className="flex items-center gap-1.5 text-xs text-slate-600">
+                      <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shrink-0" />
+                      Management Action Likely
+                    </span>
+                    <span className="flex items-center gap-1.5 text-xs text-slate-600">
+                      <span className="h-2.5 w-2.5 rounded-full bg-rose-500 shrink-0" />
+                      High Delisting Risk
+                    </span>
+                  </div>
                 </CardHeader>
                 <CardContent className="px-6 pb-6 flex-1">
                   <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm bg-white">
@@ -587,6 +603,23 @@ export function DistressIQDashboard() {
                         <p className="mt-2 text-3xl font-bold text-slate-900">{selected.bounceProbability}%</p>
                       </CardContent>
                     </Card>
+                  </div>
+
+                  {/* Score color legend */}
+                  <div className="flex flex-wrap items-center gap-3 rounded-xl bg-slate-50 border border-slate-100 px-4 py-2.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Score key</span>
+                    <span className="flex items-center gap-1.5 text-xs text-slate-600">
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" />
+                      Strong &nbsp;(≥ 70)
+                    </span>
+                    <span className="flex items-center gap-1.5 text-xs text-slate-600">
+                      <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shrink-0" />
+                      Mixed &nbsp;(50–69)
+                    </span>
+                    <span className="flex items-center gap-1.5 text-xs text-slate-600">
+                      <span className="h-2.5 w-2.5 rounded-full bg-rose-500 shrink-0" />
+                      Weak &nbsp;(&lt; 50)
+                    </span>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
