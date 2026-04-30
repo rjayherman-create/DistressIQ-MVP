@@ -1,0 +1,59 @@
+services:
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: distressiq
+      POSTGRES_USER: distressiq
+      POSTGRES_PASSWORD: distressiq_pw
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U distressiq -d distressiq"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Push DB schema (runs once, exits) ─────────────────────────────────────
+  db-migrate:
+    build:
+      context: .
+      target: migrate
+    environment:
+      DATABASE_URL: postgres://distressiq:distressiq_pw@db:5432/distressiq
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ── App ───────────────────────────────────────────────────────────────────
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      NODE_ENV: production
+      DATABASE_URL: postgres://distressiq:distressiq_pw@db:5432/distressiq
+      # Required for Replit OIDC authentication
+      REPL_ID: "${REPL_ID}"
+      ISSUER_URL: "${ISSUER_URL:-https://replit.com/oidc}"
+      # Optional: AI features
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_MODEL: "${OPENAI_MODEL:-gpt-4o-mini}"
+      # Optional: market-data price verification
+      POLYGON_API_KEY: "${POLYGON_API_KEY:-}"
+      ALPHA_VANTAGE_KEY: "${ALPHA_VANTAGE_KEY:-}"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  db_data:
