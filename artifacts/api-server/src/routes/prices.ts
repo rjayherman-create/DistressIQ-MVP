@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { fetchQuotes } from "../lib/yahoo-finance";
 import {
   fetchPolygon,
+  fetchAlphaVantage,
   fetchIEX,
   stampMarketData,
   verifyMarketData,
@@ -39,6 +40,51 @@ router.get("/prices", async (req, res) => {
 
   if (tickers.length === 0) {
     res.status(400).json({ error: "No valid tickers provided" });
+    return;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Dual-source path: Polygon + Alpha Vantage
+  // ---------------------------------------------------------------------------
+  // Enabled automatically when both POLYGON_API_KEY and ALPHA_VANTAGE_KEY are
+  // set.  Prices are fetched from both sources concurrently, stamped, and
+  // cross-validated.  Only tickers whose prices agree within the configured
+  // tolerance are included in the response.
+  if (process.env.POLYGON_API_KEY && process.env.ALPHA_VANTAGE_KEY) {
+    const result: Record<string, number> = {};
+
+    await Promise.all(
+      tickers.map(async (ticker) => {
+        try {
+          const [price1, price2] = await Promise.all([
+            fetchPolygon(ticker),
+            fetchAlphaVantage(ticker),
+          ]);
+
+          const stamped1 = stampMarketData(price1, "polygon");
+          const stamped2 = stampMarketData(price2, "alpha-vantage");
+
+          const verification = verifyMarketData({
+            primary: stamped1,
+            secondary: stamped2,
+            type: "price",
+          });
+
+          if (!verification.success) {
+            throw new Error(`Unreliable market data: ${verification.error}`);
+          }
+
+          result[ticker] = verification.data.price;
+        } catch (err) {
+          logger.warn(
+            { ticker, err },
+            "Polygon+AlphaVantage price verification failed — omitting ticker",
+          );
+        }
+      }),
+    );
+
+    res.json(result);
     return;
   }
 
@@ -98,7 +144,7 @@ router.get("/prices", async (req, res) => {
   // Fallback path: Yahoo Finance (single source)
   // ---------------------------------------------------------------------------
   logger.debug(
-    "POLYGON_API_KEY or IEX_API_KEY not set — falling back to Yahoo Finance",
+    "No dual-source API keys set — falling back to Yahoo Finance",
   );
 
   const quotes = await fetchQuotes(tickers);
