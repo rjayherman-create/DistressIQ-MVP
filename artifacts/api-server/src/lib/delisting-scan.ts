@@ -28,7 +28,11 @@ const RISK_THRESHOLD = 70;
 /** How long (ms) to cache the last completed scan before allowing a new one. */
 const SCAN_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-const SEC_USER_AGENT = "DistressIQ distressiq@example.com";
+// SEC EDGAR requires a descriptive User-Agent string that includes an email
+// address so they can contact you if needed.  Set SEC_USER_AGENT in your
+// environment to override the default (e.g. "MyApp admin@mycompany.com").
+const SEC_USER_AGENT =
+  process.env.SEC_USER_AGENT ?? "DistressIQ contact@distressiq.io";
 const FETCH_TIMEOUT_MS = 8_000;
 
 // ---------------------------------------------------------------------------
@@ -178,6 +182,56 @@ async function scoreTicker(
 }
 
 // ---------------------------------------------------------------------------
+// EDGAR ticker → CIK cache
+// ---------------------------------------------------------------------------
+// The EDGAR submissions endpoint requires zero-padded 10-digit CIK numbers,
+// not ticker symbols.  SEC publishes a public JSON mapping at:
+//   https://www.sec.gov/files/company_tickers.json
+// We fetch it once per process lifetime and cache the result.
+
+/** CIK formatted as a zero-padded 10-digit string, e.g. "0000320193". */
+type Cik = string;
+
+let tickerToCikCache: Map<string, Cik> | null = null;
+/** Promise guard so we only fetch the mapping once concurrently. */
+let tickerToCikPromise: Promise<Map<string, Cik>> | null = null;
+
+async function getTickerToCikMap(): Promise<Map<string, Cik>> {
+  if (tickerToCikCache) return tickerToCikCache;
+  if (tickerToCikPromise) return tickerToCikPromise;
+
+  tickerToCikPromise = (async () => {
+    const url = "https://www.sec.gov/files/company_tickers.json";
+    const res = await fetch(url, {
+      headers: { "User-Agent": SEC_USER_AGENT },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+
+    if (!res.ok) {
+      throw new Error(`EDGAR company_tickers HTTP ${res.status}`);
+    }
+
+    const json = (await res.json()) as Record<
+      string,
+      { cik_str: number; ticker: string; title: string }
+    >;
+
+    const map = new Map<string, Cik>();
+    for (const entry of Object.values(json)) {
+      const sym = entry.ticker.toUpperCase();
+      const cik = String(entry.cik_str).padStart(10, "0");
+      map.set(sym, cik);
+    }
+
+    tickerToCikCache = map;
+    logger.debug({ count: map.size }, "delisting-scan: EDGAR CIK map loaded");
+    return map;
+  })();
+
+  return tickerToCikPromise;
+}
+
+// ---------------------------------------------------------------------------
 // Signal functions
 // ---------------------------------------------------------------------------
 
@@ -188,11 +242,12 @@ async function scoreTicker(
  */
 async function checkFilingStatus(ticker: string): Promise<boolean> {
   try {
-    // EDGAR submissions endpoint — ticker is used as a path segment here as a
-    // best-effort lookup; note that the real EDGAR endpoint uses zero-padded
-    // CIK numbers (e.g. CIK0000320193.json).  This approach works for most
-    // NASDAQ/NYSE tickers because EDGAR aliases well-known symbols.
-    const url = `https://data.sec.gov/submissions/CIK${ticker}.json`;
+    // Resolve ticker → CIK using the SEC public mapping.
+    const cikMap = await getTickerToCikMap();
+    const cik = cikMap.get(ticker.toUpperCase());
+    if (!cik) return false; // unknown ticker — can't assess
+
+    const url = `https://data.sec.gov/submissions/CIK${cik}.json`;
     const res = await fetch(url, {
       headers: { "User-Agent": SEC_USER_AGENT },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
