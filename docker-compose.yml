@@ -19,6 +19,7 @@ services:
   db-migrate:
     build:
       context: .
+      dockerfile: Dockerfile.selfhosted
       target: migrate
     environment:
       DATABASE_URL: postgres://distressiq:distressiq_pw@db:5432/distressiq
@@ -28,7 +29,9 @@ services:
 
   # ── App ───────────────────────────────────────────────────────────────────
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.selfhosted
     restart: unless-stopped
     ports:
       - "8080:8080"
