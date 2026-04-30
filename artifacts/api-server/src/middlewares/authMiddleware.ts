@@ -68,20 +68,27 @@ export async function authMiddleware(
     return;
   }
 
-  const session = await getSession(sid);
-  if (!session?.user?.id) {
-    await clearSession(res, sid);
-    next();
-    return;
+  try {
+    const session = await getSession(sid);
+    if (!session?.user?.id) {
+      await clearSession(res, sid);
+      next();
+      return;
+    }
+
+    const refreshed = await refreshIfExpired(sid, session);
+    if (!refreshed) {
+      await clearSession(res, sid);
+      next();
+      return;
+    }
+
+    req.user = refreshed.user;
+  } catch {
+    // DB unavailable or session lookup failed — treat as unauthenticated so
+    // public API routes (e.g. /api/stocks) still respond instead of returning
+    // a 500 that forces the frontend into permanent "Demo data" mode.
   }
 
-  const refreshed = await refreshIfExpired(sid, session);
-  if (!refreshed) {
-    await clearSession(res, sid);
-    next();
-    return;
-  }
-
-  req.user = refreshed.user;
   next();
 }
