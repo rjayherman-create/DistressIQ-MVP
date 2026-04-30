@@ -131,8 +131,9 @@ export function computeAdjustedScores(
   const chart = liveChart ?? def.chart;
   if (chart.length >= 3) {
     const tail = chart.slice(-3).map((pt) => pt.p);
-    const isRising = tail[2] > tail[1] && tail[1] > tail[0];
-    const isFalling = tail[2] < tail[1] && tail[1] < tail[0];
+    const [oldestPrice, middlePrice, latestPrice] = tail;
+    const isRising = latestPrice > middlePrice && middlePrice > oldestPrice;
+    const isFalling = latestPrice < middlePrice && middlePrice < oldestPrice;
 
     // Price recovering for 2+ consecutive weeks: positive signal.
     if (isRising) {
@@ -142,8 +143,7 @@ export function computeAdjustedScores(
     }
 
     // Price falling for 2+ consecutive weeks: negative signal.
-    if (isFalling) {
-      bounceProbability -= 4;
+    if (isFalling) {      bounceProbability -= 4;
       patternScore -= 4;
       delistingRisk += 3;
     }

@@ -151,9 +151,9 @@ async function generateAlerts(): Promise<CachedAlerts["alerts"]> {
     }
 
     // -----------------------------------------------------------------------
-    // Condition 5: Price bounced above $1.00 (compliance recovery)
+    // Condition 5: Price bounced above $1.00 (compliance recovery signal)
     // -----------------------------------------------------------------------
-    if (price >= 1.00 && def.status !== "Recovery Candidate") {
+    if (price >= 1.00) {
       generated.push({
         id: String(id++),
         ticker: def.ticker,

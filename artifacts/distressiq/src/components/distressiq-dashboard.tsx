@@ -292,7 +292,7 @@ export function DistressIQDashboard() {
                               <Info className="h-3.5 w-3.5" />
                             </button>
                           </TooltipTrigger>
-                          <TooltipContent className="max-w-[260px] text-center leading-relaxed whitespace-normal">
+                          <TooltipContent className="max-w-[260px] leading-relaxed whitespace-normal">
                             {tooltip}
                           </TooltipContent>
                         </Tooltip>
