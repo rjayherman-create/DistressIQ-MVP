@@ -7,12 +7,14 @@ import {
 import { fetchQuotes, fetchWeeklyHistory } from "../lib/yahoo-finance";
 import { fetchPolygonBatch, fetchAlphaVantage, type RawMarketData } from "../lib/market-data";
 import { fetchStockNews } from "../lib/stock-news";
+import { computeAdjustedScores } from "../lib/score-engine";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
 // Static definitions — scores, notes, and trade plan zones are analyst-assigned.
 // Price, volume, and chart are overlaid with live data at request time.
+// Scores are further refined at query time by the score engine using live prices.
 const stockDefinitions = [
   {
     ticker: "TELA",
@@ -967,12 +969,19 @@ async function buildLiveStockData() {
   return stockDefinitions.map((def, i) => {
     const quote = quotes.get(def.ticker);
     const history = histories[i];
+    const liveChart = history ?? def.chart;
+    const livePrice = quote?.price ?? null;
+
+    // Apply score engine: refine analyst-assigned scores using live market data.
+    const adjusted = computeAdjustedScores(def, livePrice, liveChart);
+
     return {
       ...def,
+      ...adjusted,
       price: quote?.price ?? def.price,
       volume: quote?.volume ?? def.volume,
       priceTimestamp: quote ? new Date(quote.fetchedAt).toISOString() : fallbackTimestamp,
-      chart: history ?? def.chart,
+      chart: liveChart,
     };
   });
 }
@@ -1019,12 +1028,18 @@ router.get("/stocks/:ticker", async (req, res) => {
   ]);
 
   const quote = quotes.get(def.ticker);
+  const liveChart = history ?? def.chart;
+  const livePrice = quote?.price ?? null;
+
+  const adjusted = computeAdjustedScores(def, livePrice, liveChart);
+
   const stock = {
     ...def,
+    ...adjusted,
     price: quote?.price ?? def.price,
     volume: quote?.volume ?? def.volume,
     priceTimestamp: quote ? new Date(quote.fetchedAt).toISOString() : new Date().toISOString(),
-    chart: history ?? def.chart,
+    chart: liveChart,
   };
 
   const parsed = GetStockResponse.parse(stock);
