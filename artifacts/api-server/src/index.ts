@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { runBackgroundScanner } from "./routes/scan";
 
 const rawPort = process.env["PORT"];
 
@@ -23,3 +24,13 @@ app.listen(port, (err) => {
 
   logger.info({ port }, "Server listening");
 });
+
+// Background scan loop — runs every 60 seconds (Railway-compatible).
+// Scans all defined tickers for pre-delisting signals and updates the
+// in-memory tracking store with any new alert messages.
+setInterval(() => {
+  logger.debug("Running background stock scanner");
+  runBackgroundScanner().catch((err: unknown) => {
+    logger.error({ err }, "Background scanner error");
+  });
+}, 60_000);

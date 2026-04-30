@@ -6,6 +6,7 @@ import alertsRouter from "./alerts";
 import authRouter from "./auth";
 import pricesRouter from "./prices";
 import aiRouter from "./ai";
+import scanRouter from "./scan";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(watchlistRouter);
 router.use(alertsRouter);
 router.use(pricesRouter);
 router.use(aiRouter);
+router.use(scanRouter);
 
 export default router;

@@ -16,6 +16,8 @@ const FETCH_HEADERS = {
 interface PriceEntry {
   price: number;
   volume: string;
+  /** Raw volume as a plain number — used by the scan engine for comparison. */
+  volumeRaw: number;
   fetchedAt: number;
 }
 
@@ -72,6 +74,7 @@ export async function fetchQuotes(
         const entry: PriceEntry = {
           price: parseFloat(item.regularMarketPrice.toFixed(4)),
           volume: formatVolume(item.regularMarketVolume ?? 0),
+          volumeRaw: item.regularMarketVolume ?? 0,
           fetchedAt: now,
         };
         priceCache.set(item.symbol.toUpperCase(), entry);
