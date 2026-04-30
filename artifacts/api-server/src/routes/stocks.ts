@@ -965,7 +965,6 @@ async function buildLiveStockData() {
     ...TICKERS.map((t) => fetchWeeklyHistory(t)),
   ]);
 
-  const fallbackTimestamp = new Date().toISOString();
   return stockDefinitions.map((def, i) => {
     const quote = quotes.get(def.ticker);
     const history = histories[i];
@@ -980,7 +979,10 @@ async function buildLiveStockData() {
       ...adjusted,
       price: quote?.price ?? def.price,
       volume: quote?.volume ?? def.volume,
-      priceTimestamp: quote ? new Date(quote.fetchedAt).toISOString() : fallbackTimestamp,
+      // Only set priceTimestamp when live price data was actually fetched.
+      // undefined when falling back to static data so callers know no live
+      // price is available rather than being misled by a current timestamp.
+      priceTimestamp: quote ? new Date(quote.fetchedAt).toISOString() : undefined,
       chart: liveChart,
     };
   });
@@ -1044,7 +1046,7 @@ router.get("/stocks/:ticker", async (req, res) => {
       ...adjusted,
       price: quote?.price ?? def.price,
       volume: quote?.volume ?? def.volume,
-      priceTimestamp: quote ? new Date(quote.fetchedAt).toISOString() : new Date().toISOString(),
+    priceTimestamp: quote ? new Date(quote.fetchedAt).toISOString() : undefined,
       chart: liveChart,
     };
 
