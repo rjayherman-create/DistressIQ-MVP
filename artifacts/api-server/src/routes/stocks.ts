@@ -925,26 +925,25 @@ async function fetchLivePrices(
     }
   }
 
-  // --- Alpha Vantage per-ticker (for any still missing) ---
+  // --- Alpha Vantage per-ticker (for any still missing) — sequential to
+  //     avoid hammering the free-tier rate limit (5 req/min). ---
   if (process.env.ALPHA_VANTAGE_KEY) {
     const missing = tickers.filter((t) => !result.has(t));
-    await Promise.all(
-      missing.map(async (ticker) => {
-        try {
-          const data: RawMarketData = await fetchAlphaVantage(ticker);
-          result.set(ticker, {
-            price: data.price,
-            volume: formatVol(data.volume) ?? "—",
-            fetchedAt: now,
-          });
-        } catch (err) {
-          logger.warn(
-            { ticker, err },
-            "Alpha Vantage fetch failed for ticker — falling through to Yahoo Finance",
-          );
-        }
-      }),
-    );
+    for (const ticker of missing) {
+      try {
+        const data: RawMarketData = await fetchAlphaVantage(ticker);
+        result.set(ticker, {
+          price: data.price,
+          volume: formatVol(data.volume) ?? "—",
+          fetchedAt: now,
+        });
+      } catch (err) {
+        logger.warn(
+          { ticker, err },
+          "Alpha Vantage fetch failed for ticker — falling through to Yahoo Finance",
+        );
+      }
+    }
   }
 
   // --- Yahoo Finance for any still missing ---

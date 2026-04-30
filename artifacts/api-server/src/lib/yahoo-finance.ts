@@ -51,7 +51,7 @@ export async function fetchQuotes(
 
   try {
     const symbols = stale.join(",");
-    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice,regularMarketVolume`;
+    const url = `https://query2.finance.yahoo.com/v8/finance/quote?symbols=${symbols}&fields=regularMarketPrice,regularMarketVolume`;
     const res = await fetch(url, { headers: FETCH_HEADERS, signal: AbortSignal.timeout(5000) });
 
     if (!res.ok) throw new Error(`Yahoo Finance quotes HTTP ${res.status} ${res.statusText}`);

@@ -1,11 +1,8 @@
 import { Router, type IRouter } from "express";
 import { fetchQuotes } from "../lib/yahoo-finance";
 import {
-  fetchPolygon,
+  fetchPolygonBatch,
   fetchAlphaVantage,
-  fetchIEX,
-  stampMarketData,
-  verifyMarketData,
 } from "../lib/market-data";
 import { logger } from "../lib/logger";
 
@@ -33,15 +30,13 @@ async function fillFromYahoo(
  * GET /api/prices?tickers=MVST,MULN,IDEX,...
  *
  * Returns a JSON object mapping each requested ticker to its current market
- * price.  Prices are verified against two independent sources (Polygon and
- * IEX Cloud) when the corresponding API keys are present.  If the dual-source
- * check is unavailable the route falls back to a single Yahoo Finance fetch.
+ * price.  Uses the best available source in priority order:
+ *   1. Polygon batch snapshot (single request, requires POLYGON_API_KEY)
+ *   2. Alpha Vantage per-ticker, processed sequentially to respect the free-tier
+ *      rate limit (requires ALPHA_VANTAGE_KEY; covers tickers Polygon missed)
+ *   3. Yahoo Finance for any tickers still missing
  *
- * Tickers for which a price could not be fetched or verified are omitted from
- * the response so callers can fall back to their own defaults.
- *
- * Responses are served from a 60-second in-process cache (Yahoo Finance path)
- * so the underlying APIs are not hammered on every page load.
+ * Tickers for which no price could be fetched are omitted from the response.
  */
 router.get("/prices", async (req, res) => {
   const raw = req.query.tickers;
@@ -62,117 +57,53 @@ router.get("/prices", async (req, res) => {
   }
 
   // ---------------------------------------------------------------------------
-  // Dual-source path: Polygon + Alpha Vantage
+  // Primary path: Polygon batch → Alpha Vantage (sequential) → Yahoo Finance
   // ---------------------------------------------------------------------------
-  // Enabled automatically when both POLYGON_API_KEY and ALPHA_VANTAGE_KEY are
-  // set.  Prices are fetched from both sources concurrently, stamped, and
-  // cross-validated.  Only tickers whose prices agree within the configured
-  // tolerance are included in the response.
-  if (process.env.POLYGON_API_KEY && process.env.ALPHA_VANTAGE_KEY) {
+  // Polygon batch fetches all tickers in a single API call.  Any tickers not
+  // covered by Polygon are picked up by Alpha Vantage one at a time (sequential
+  // to respect the free-tier rate limit of 5 req/min).  Yahoo Finance covers
+  // anything still missing.
+  if (process.env.POLYGON_API_KEY) {
     const result: Record<string, number> = {};
-    const unverified: string[] = [];
 
-    await Promise.all(
-      tickers.map(async (ticker) => {
+    // 1. Polygon batch — one request for all tickers.
+    try {
+      const polygonData = await fetchPolygonBatch(tickers);
+      for (const [ticker, data] of polygonData) {
+        result[ticker] = data.price;
+      }
+    } catch (err) {
+      logger.warn({ err }, "Polygon batch fetch failed — continuing to fallbacks");
+    }
+
+    // 2. Alpha Vantage — sequential to avoid rate limiting.
+    if (process.env.ALPHA_VANTAGE_KEY) {
+      const missing = tickers.filter((t) => !(t in result));
+      for (const ticker of missing) {
         try {
-          const [price1, price2] = await Promise.all([
-            fetchPolygon(ticker),
-            fetchAlphaVantage(ticker),
-          ]);
-
-          const stamped1 = stampMarketData(price1, "polygon");
-          const stamped2 = stampMarketData(price2, "alpha-vantage");
-
-          const verification = verifyMarketData({
-            primary: stamped1,
-            secondary: stamped2,
-            type: "price",
-          });
-
-          if (!verification.success) {
-            throw new Error(`Unreliable market data: ${verification.error}`);
-          }
-
-          result[ticker] = verification.data.price;
+          const data = await fetchAlphaVantage(ticker);
+          result[ticker] = data.price;
         } catch (err) {
           logger.warn(
             { ticker, err },
-            "Polygon+AlphaVantage price verification failed — omitting ticker",
+            "Alpha Vantage fetch failed for ticker — falling through to Yahoo Finance",
           );
-          unverified.push(ticker);
         }
-      }),
-    );
+      }
+    }
 
-    // Fall back to Yahoo Finance for tickers that could not be dual-source verified.
-    await fillFromYahoo(unverified, result);
+    // 3. Yahoo Finance for any still-missing tickers.
+    await fillFromYahoo(tickers.filter((t) => !(t in result)), result);
 
     res.json(result);
     return;
   }
 
   // ---------------------------------------------------------------------------
-  // Dual-source path: Polygon + IEX
-  // ---------------------------------------------------------------------------
-  // Enabled automatically when both POLYGON_API_KEY and IEX_API_KEY are set.
-  // Each ticker is fetched from both sources concurrently.  The two results
-  // are stamped and cross-validated; only tickers whose prices agree within
-  // the configured tolerance are included in the response.  A hard failure on
-  // any individual ticker is logged and that ticker is omitted rather than
-  // failing the entire request.
-  if (process.env.POLYGON_API_KEY && process.env.IEX_API_KEY) {
-    const result: Record<string, number> = {};
-    const unverified: string[] = [];
-
-    await Promise.all(
-      tickers.map(async (ticker) => {
-        try {
-          // 1. Fetch from two sources
-          const [price1, price2] = await Promise.all([
-            fetchPolygon(ticker),
-            fetchIEX(ticker),
-          ]);
-
-          // 2. Stamp them
-          const stamped1 = stampMarketData(price1, "polygon");
-          const stamped2 = stampMarketData(price2, "iex");
-
-          // 3. Verify
-          const verification = verifyMarketData({
-            primary: stamped1,
-            secondary: stamped2,
-            type: "price",
-          });
-
-          // 4. Hard fail if bad
-          if (!verification.success) {
-            throw new Error(`Unreliable market data: ${verification.error}`);
-          }
-
-          // 5. Collect only verified data
-          result[ticker] = verification.data.price;
-        } catch (err) {
-          logger.warn(
-            { ticker, err },
-            "Dual-source price verification failed — omitting ticker",
-          );
-          unverified.push(ticker);
-        }
-      }),
-    );
-
-    // Fall back to Yahoo Finance for tickers that could not be dual-source verified.
-    await fillFromYahoo(unverified, result);
-
-    res.json(result);
-    return;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Fallback path: Yahoo Finance (single source)
+  // Fallback path: Yahoo Finance (no Polygon key configured)
   // ---------------------------------------------------------------------------
   logger.debug(
-    "No dual-source API keys set — falling back to Yahoo Finance",
+    "No POLYGON_API_KEY set — falling back to Yahoo Finance",
   );
 
   const quotes = await fetchQuotes(tickers);
