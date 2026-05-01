@@ -47,7 +47,15 @@ const alertThresholds: AlertThreshold[] = [
   { ticker: "NXPL",  company: "NextPlat Corp",                         entryZone: "$0.51–$0.55",  daysToDeadline: 107, status: "Management Action Likely",   stopPrice: 0.45 },
   { ticker: "ABVC",  company: "ABVC BioPharma Inc",                    entryZone: "$0.32–$0.35",  daysToDeadline: 48,  status: "High Delisting Risk",        stopPrice: 0.27 },
   { ticker: "NRSN",  company: "NeuroSense Therapeutics",               entryZone: "$0.67–$0.70",  daysToDeadline: 136, status: "Recovery Candidate",        stopPrice: 0.61 },
-  { ticker: "CETX",  company: "Cemtrex Inc",                           entryZone: "$0.39–$0.43",  daysToDeadline: 72,  status: "High Delisting Risk",        stopPrice: 0.34 },
+  { ticker: "CETX",  company: "Cemtrex Inc",                            entryZone: "$0.39–$0.43",  daysToDeadline: 72,  status: "High Delisting Risk",        stopPrice: 0.34 },
+  { ticker: "BNGO",  company: "Bionano Genomics",                       entryZone: "$0.27–$0.30",  daysToDeadline: 41,  status: "High Delisting Risk",        stopPrice: 0.23 },
+  { ticker: "SNDL",  company: "SNDL Inc",                               entryZone: "$0.68–$0.71",  daysToDeadline: 129, status: "Management Action Likely",   stopPrice: 0.62 },
+  { ticker: "TLRY",  company: "Tilray Brands",                          entryZone: "$0.83–$0.86",  daysToDeadline: 147, status: "Recovery Candidate",        stopPrice: 0.77 },
+  { ticker: "WKHS",  company: "Workhorse Group",                        entryZone: "$0.43–$0.47",  daysToDeadline: 96,  status: "Management Action Likely",   stopPrice: 0.38 },
+  { ticker: "CLNN",  company: "Clene Inc",                              entryZone: "$0.38–$0.41",  daysToDeadline: 87,  status: "Management Action Likely",   stopPrice: 0.33 },
+  { ticker: "KNDI",  company: "Kandi Technologies",                     entryZone: "$0.48–$0.52",  daysToDeadline: 114, status: "Management Action Likely",   stopPrice: 0.42 },
+  { ticker: "ATER",  company: "Aterian Inc",                            entryZone: "$0.34–$0.37",  daysToDeadline: 47,  status: "High Delisting Risk",        stopPrice: 0.29 },
+  { ticker: "CLOV",  company: "Clover Health Investments",              entryZone: "$0.41–$0.44",  daysToDeadline: 101, status: "Management Action Likely",   stopPrice: 0.36 },
 ];
 
 // ---------------------------------------------------------------------------
